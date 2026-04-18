@@ -1,65 +1,70 @@
 // src/services/api.js
-// API_URL ni o'zingizning domeningizga o'zgartiring
+// Backend: FastAPI http://127.0.0.1:8000/api
 
-const API_URL = 'https://yoshijodkor.uz/api/index.php';
+const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
-function getToken() {
-  return localStorage.getItem('token');
+let _token = null;
+
+export function setToken(token) {
+  _token = token;
+}
+export function clearToken() {
+  _token = null;
+}
+export function getToken() {
+  return _token;
 }
 
 async function request(method, path, data = null) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const headers = { "Content-Type": "application/json" };
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
 
   const opts = { method, headers };
   if (data) opts.body = JSON.stringify(data);
 
-  try {
-    const res = await fetch(`${API_URL}${path}`, opts);
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Xatolik yuz berdi');
-    return json;
-  } catch (err) {
-    throw err;
-  }
+  const res = await fetch(`${BASE}${path}`, opts);
+  if (res.status === 204) return null;
+  const json = await res.json();
+  if (!res.ok)
+    throw new Error(json.detail || json.error || "Xatolik yuz berdi");
+  return json;
 }
 
-export const api = {
-  // Auth
-  login:      (login, password) => request('POST', '/auth/login', { login, password }),
-  me:         ()                => request('GET',  '/auth/me'),
+export const authAPI = {
+  login: (username, password) =>
+    request("POST", "/auth/login", { username, password }),
+  me: () => request("GET", "/auth/me"),
+};
 
-  // Products
-  getProducts: (params = {}) => {
+export const productsAPI = {
+  getAll: (params = {}) => {
     const q = new URLSearchParams(params).toString();
-    return request('GET', `/products${q ? '?' + q : ''}`);
+    return request("GET", `/products${q ? "?" + q : ""}`);
   },
-  getProduct:   (id)   => request('GET',    `/products/${id}`),
-  createProduct:(data) => request('POST',   '/products', data),
-  updateProduct:(id, data) => request('PUT',`/products/${id}`, data),
-  deleteProduct:(id)   => request('DELETE', `/products/${id}`),
+  getOne: (id) => request("GET", `/products/${id}`),
+  create: (data) => request("POST", "/products", data),
+  update: (id, data) => request("PUT", `/products/${id}`, data),
+  delete: (id) => request("DELETE", `/products/${id}`),
+};
 
-  // Orders
-  getOrders:    (params = {}) => {
-    const q = new URLSearchParams(params).toString();
-    return request('GET', `/orders${q ? '?' + q : ''}`);
-  },
-  createOrder:  (data)        => request('POST', '/orders', data),
-  updateStatus: (id, status)  => request('PUT',  `/orders/${id}/status`, { status }),
-  confirmPayment:(id, itemId, confirmed) =>
-    request('PUT', `/orders/${id}/payment`, { item_id: itemId, confirmed }),
+export const ordersAPI = {
+  create: (data) => request("POST", "/orders", data),
+  getAll: () => request("GET", "/orders"),
+  updateStatus: (id, status) =>
+    request("PUT", `/orders/${id}/status`, { status }),
+};
 
-  // Users
-  getUsers:     ()            => request('GET',    '/users'),
-  createUser:   (data)        => request('POST',   '/users', data),
-  updateUser:   (id, data)    => request('PUT',    `/users/${id}`, data),
-  deleteUser:   (id)          => request('DELETE', `/users/${id}`),
+export const customOrdersAPI = {
+  create: (data) => request("POST", "/custom-orders", data),
+  getAll: () => request("GET", "/custom-orders"),
+  updateStatus: (id, status) =>
+    request("PUT", `/custom-orders/${id}/status`, { status }),
+};
 
-  // Donations
-  createDonation:(data)       => request('POST',   '/donations', data),
-  getDonations:  ()           => request('GET',    '/donations'),
-
-  // Stats
-  getStats:      ()           => request('GET',    '/stats'),
+export const usersAPI = {
+  getAll: () => request("GET", "/users"),
+  create: (data) => request("POST", "/users", data),
+  update: (id, data) => request("PUT", `/users/${id}`, data),
+  delete: (id) => request("DELETE", `/users/${id}`),
+  toggle: (id) => request("PATCH", `/users/${id}/toggle`),
 };
