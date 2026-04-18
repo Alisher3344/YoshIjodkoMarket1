@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { ShoppingCart, Menu, X, Search, User, ChevronDown } from "lucide-react";
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  Search,
+  User,
+  ChevronDown,
+  LogOut,
+  Moon,
+  Sun,
+} from "lucide-react";
 import useStore from "../../store/useStore";
 import { useNavigate } from "react-router-dom";
-import { categoryLabels } from "../../data/translations";
+import { categoryLabels } from "../ui/data/translations";
 import TransparentImg from "../ui/TransparentImg";
 
 export default function Header() {
@@ -17,9 +27,15 @@ export default function Header() {
     setSelectedCategory,
     setSearchQuery,
     searchQuery,
+    adminLoggedIn,
+    currentUser,
+    adminLogout,
+    darkMode,
+    toggleDarkMode,
   } = useStore();
   const navigate = useNavigate();
   const [catOpen, setCatOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
   const cats = categoryLabels[lang];
@@ -35,12 +51,21 @@ export default function Header() {
     navigate("/catalog");
   };
 
+  const handleUserClick = () => {
+    if (!adminLoggedIn) {
+      navigate("/auth");
+    } else {
+      setUserOpen(!userOpen);
+    }
+  };
+
+  const isAdmin =
+    currentUser?.role === "admin" || currentUser?.role === "superadmin";
+
   return (
     <header className="sticky top-0 z-50 bg-white shadow-md">
-      {/* Main header */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-3 py-3">
-          {/* Logo */}
           <a
             href="/"
             onClick={(e) => {
@@ -49,15 +74,12 @@ export default function Header() {
             }}
             className="flex items-center gap-2 flex-shrink-0"
           >
-            {/* SMART logo — qora fon shaffof */}
             <TransparentImg
               src="/logo-smart.png"
               alt="SMART"
               className="hidden sm:block h-10 object-contain"
             />
-            {/* Divider */}
             <div className="hidden sm:block w-px h-8 bg-gray-200" />
-            {/* Maktab logo — qora fon shaffof */}
             <TransparentImg
               src="/logo-maktab.png"
               alt="Yoshijodkor"
@@ -72,7 +94,6 @@ export default function Header() {
             </div>
           </a>
 
-          {/* Category button — LEFT of search */}
           <div className="relative hidden md:block flex-shrink-0">
             <button
               onClick={() => setCatOpen(!catOpen)}
@@ -102,7 +123,6 @@ export default function Header() {
             )}
           </div>
 
-          {/* Search */}
           <form onSubmit={handleSearch} className="flex-1">
             <div className="flex bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:border-[#1a56db] transition">
               <input
@@ -121,9 +141,7 @@ export default function Header() {
             </div>
           </form>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Language */}
             <div className="flex bg-gray-100 rounded-lg overflow-hidden text-xs font-bold">
               <button
                 onClick={() => setLang("uz")}
@@ -147,16 +165,88 @@ export default function Header() {
               </button>
             </div>
 
-            {/* Admin */}
+            <div className="relative hidden md:block">
+              <button
+                onClick={handleUserClick}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition text-sm font-medium ${
+                  adminLoggedIn
+                    ? "bg-blue-50 text-[#1a56db] hover:bg-blue-100"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <User size={15} />
+                <span className="hidden lg:block">
+                  {adminLoggedIn
+                    ? currentUser?.name?.split(" ")[0] || "Profil"
+                    : t("login")}
+                </span>
+              </button>
+
+              {adminLoggedIn && userOpen && (
+                <div className="absolute top-full right-0 mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 min-w-48 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="font-bold text-sm text-gray-800">
+                      {currentUser?.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {currentUser?.phone || currentUser?.username}
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => {
+                        navigate("/admin");
+                        setUserOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-[#1a56db] transition font-medium flex items-center gap-2"
+                    >
+                      ⚙️ {lang === "uz" ? "Admin panel" : "Админ панель"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        navigate("/cabinet");
+                        setUserOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-[#1a56db] transition font-medium flex items-center gap-2"
+                    >
+                      🎓 {lang === "uz" ? "Mening kabinetim" : "Мой кабинет"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      adminLogout();
+                      setUserOpen(false);
+                      navigate("/");
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 text-red-600 transition font-medium flex items-center gap-2 border-t border-gray-100"
+                  >
+                    <LogOut size={14} /> {lang === "uz" ? "Chiqish" : "Выйти"}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
-              onClick={() => navigate("/admin")}
-              className="hidden md:flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition text-sm font-medium"
+              onClick={toggleDarkMode}
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+              title={
+                darkMode
+                  ? lang === "uz"
+                    ? "Kun rejimi"
+                    : "Дневной режим"
+                  : lang === "uz"
+                  ? "Tun rejimi"
+                  : "Ночной режим"
+              }
             >
-              <User size={15} />
-              <span className="hidden lg:block">{t("login")}</span>
+              {darkMode ? (
+                <Sun size={17} className="text-yellow-400" />
+              ) : (
+                <Moon size={17} className="text-gray-600" />
+              )}
             </button>
 
-            {/* Cart */}
             <button
               onClick={() => setCartOpen(true)}
               className="flex items-center gap-2 bg-[#f97316] hover:bg-[#c2570d] text-white px-3 py-2 rounded-lg transition relative"
@@ -172,7 +262,6 @@ export default function Header() {
               )}
             </button>
 
-            {/* Mobile menu */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="md:hidden bg-gray-100 p-2 rounded-lg"
@@ -182,7 +271,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Nav links */}
         <nav className="hidden md:flex items-center gap-1 pb-2 border-t border-gray-100 pt-2">
           {[
             { label: t("home"), path: "/" },
@@ -199,7 +287,6 @@ export default function Header() {
             </button>
           ))}
 
-          {/* Buyurtma berish — o'ng tomonda yorqin tugma */}
           <button
             onClick={() => {
               setSelectedCategory("custom");
@@ -212,7 +299,6 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 flex flex-col gap-2">
           {Object.entries(cats).map(([key, label]) => (
@@ -228,15 +314,47 @@ export default function Header() {
             </button>
           ))}
           <hr />
-          <button
-            onClick={() => {
-              navigate("/admin");
-              setMenuOpen(false);
-            }}
-            className="text-left px-3 py-2 text-sm text-[#1a56db] font-semibold"
-          >
-            {t("adminPanel")}
-          </button>
+          {adminLoggedIn ? (
+            <>
+              <button
+                onClick={() => {
+                  navigate(isAdmin ? "/admin" : "/cabinet");
+                  setMenuOpen(false);
+                }}
+                className="text-left px-3 py-2 text-sm text-[#1a56db] font-semibold"
+              >
+                {isAdmin
+                  ? lang === "uz"
+                    ? "Admin panel"
+                    : "Админ панель"
+                  : lang === "uz"
+                  ? "Mening kabinetim"
+                  : "Мой кабинет"}
+              </button>
+              <button
+                onClick={() => {
+                  adminLogout();
+                  setMenuOpen(false);
+                  navigate("/");
+                }}
+                className="text-left px-3 py-2 text-sm text-red-600 font-semibold"
+              >
+                {lang === "uz" ? "Chiqish" : "Выйти"}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => {
+                navigate("/auth");
+                setMenuOpen(false);
+              }}
+              className="text-left px-3 py-2 text-sm text-[#1a56db] font-semibold"
+            >
+              {lang === "uz"
+                ? "Kirish / Ro'yxatdan o'tish"
+                : "Войти / Регистрация"}
+            </button>
+          )}
         </div>
       )}
     </header>

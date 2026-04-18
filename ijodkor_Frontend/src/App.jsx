@@ -9,6 +9,8 @@ import ProductPage from "./pages/ProductPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminPage from "./pages/AdminPage";
 import CustomOrderPage from "./pages/CustomOrderPage";
+import AuthPage from "./pages/AuthPage";
+import CabinetPage from "./pages/CabinetPage";
 import { AboutPage, ContactPage } from "./pages/StaticPages";
 
 function ScrollToTop() {
@@ -91,6 +93,8 @@ export default function App() {
             </Layout>
           }
         />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/cabinet" element={<CabinetPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </HashRouter>

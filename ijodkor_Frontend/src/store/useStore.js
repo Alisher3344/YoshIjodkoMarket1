@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { translations } from "../data/translations";
+import { translations } from "../components/ui/data/translations";
 import { api, setToken, clearToken } from "../services/api";
 
 export const ROLES = {
@@ -71,6 +71,10 @@ function norm(p) {
     cardNumber: p.card_number || p.cardNumber || "",
     storyUz: p.story_uz || p.storyUz || "",
     storyRu: p.story_ru || p.storyRu || "",
+    // Avtor profil ma'lumotlari (backenddan join bilan kelishi mumkin)
+    authorAvatar: p.author_avatar || p.authorAvatar || "",
+    illnessInfo: p.illness_info || p.illnessInfo || "",
+    fullName: p.full_name || p.fullName || "",
   };
 }
 
@@ -173,11 +177,19 @@ const useStore = create((set, get) => ({
   setSelectedCategory: (v) => set({ selectedCategory: v }),
   sortBy: "newest",
   setSortBy: (v) => set({ sortBy: v }),
-
+  // ── Dark mode ─────────────────────────────────────────────────────────
+  darkMode: localStorage.getItem("darkMode") === "true",
+  toggleDarkMode: () => {
+    const next = !get().darkMode;
+    localStorage.setItem("darkMode", String(next));
+    document.documentElement.classList.toggle("dark", next);
+    set({ darkMode: next });
+  },
   // ── Auth ──────────────────────────────────────────────────────────────
   adminLoggedIn: !!localStorage.getItem("token"),
   currentUser: JSON.parse(localStorage.getItem("currentUser") || "null"),
 
+  // Kirish (telefon raqami + parol)
   adminLogin: async (username, password) => {
     try {
       const res = await api.login(username, password);
@@ -191,11 +203,38 @@ const useStore = create((set, get) => ({
       return false;
     }
   },
+
+  // Ro'yxatdan o'tish
+  register: async (data) => {
+    try {
+      const res = await api.register(data);
+      const token = res.token || res.access_token;
+      if (!token) return { success: false, error: "Token kelmadi" };
+      setToken(token);
+      localStorage.setItem("currentUser", JSON.stringify(res.user));
+      set({ adminLoggedIn: true, currentUser: res.user });
+      return { success: true, user: res.user };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+  updateProfile: async (data) => {
+    try {
+      const res = await api.updateProfile(data);
+      localStorage.setItem("currentUser", JSON.stringify(res));
+      set({ currentUser: res });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
   adminLogout: () => {
     clearToken();
     localStorage.removeItem("currentUser");
-    set({ adminLoggedIn: false, currentUser: null });
+    set({ adminLoggedIn: false, currentUser: null, myProducts: [] });
   },
+
   changeAdminPassword: async (oldPass, newPass) => {
     try {
       const user = get().currentUser;
@@ -234,14 +273,29 @@ const useStore = create((set, get) => ({
   addProduct: async (data) => {
     await api.createProduct(toBackend(data));
     await get().fetchProducts();
+    if (get().currentUser) await get().fetchMyProducts();
   },
   editProduct: async (id, data) => {
     await api.updateProduct(id, toBackend(data));
     await get().fetchProducts();
+    if (get().currentUser) await get().fetchMyProducts();
   },
   deleteProduct: async (id) => {
     await api.deleteProduct(id);
     set({ products: get().products.filter((p) => p.id !== id) });
+    set({ myProducts: get().myProducts.filter((p) => p.id !== id) });
+  },
+
+  // ── O'z mahsulotlari (kabinet) ────────────────────────────────────────
+  myProducts: [],
+  fetchMyProducts: async () => {
+    try {
+      const res = await api.getMyProducts();
+      set({ myProducts: (res.data || []).map(norm) });
+    } catch (err) {
+      console.error("fetchMyProducts:", err.message);
+      set({ myProducts: [] });
+    }
   },
 
   // ── Buyurtmalar ───────────────────────────────────────────────────────
@@ -309,7 +363,7 @@ const useStore = create((set, get) => ({
     });
   },
 
-  // ── Foydalanuvchilar ──────────────────────────────────────────────────
+  // ── Foydalanuvchilar (admin) ──────────────────────────────────────────
   users: [],
   fetchUsers: async () => {
     try {

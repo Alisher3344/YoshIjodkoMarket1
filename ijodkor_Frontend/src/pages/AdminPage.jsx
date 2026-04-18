@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { categoryLabels } from "../data/translations";
+import { categoryLabels } from "../components/ui/data/translations";
 import {
   LayoutDashboard,
   Package,

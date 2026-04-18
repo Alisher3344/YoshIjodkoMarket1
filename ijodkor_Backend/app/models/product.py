@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 from ..core.database import Base
 
@@ -7,10 +7,11 @@ class Product(Base):
     __tablename__ = "products"
 
     id           = Column(Integer, primary_key=True, index=True)
+    user_id      = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # kim yaratgan
     name_uz      = Column(String, nullable=False)
     name_ru      = Column(String, default="")
-    desc_uz      = Column(Text, default="")
-    desc_ru      = Column(Text, default="")
+    desc_uz      = Column(Text,   default="")
+    desc_ru      = Column(Text,   default="")
     price        = Column(Float, nullable=False)
     old_price    = Column(Float, nullable=True)
     stock        = Column(Integer, default=1)
@@ -28,11 +29,11 @@ class Product(Base):
     phone        = Column(String, default="")
     student_type = Column(String, default="normal")
     card_number  = Column(String, default="")
-    story_uz     = Column(Text, default="")
-    story_ru     = Column(Text, default="")
+    story_uz     = Column(Text,   default="")
+    story_ru     = Column(Text,   default="")
     photo        = Column(String, default="")
     image        = Column(String, default="")
-    rating       = Column(Float, default=5.0)
+    rating       = Column(Float,  default=5.0)
     reviews      = Column(Integer, default=0)
     sold         = Column(Integer, default=0)
     created_at   = Column(DateTime(timezone=True), server_default=func.now())

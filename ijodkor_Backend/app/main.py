@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
 from app.core.database import engine, Base
 from app.routes import auth, products, orders, custom_orders, users, contact
 
@@ -12,21 +11,17 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Database tayyor")
     yield
-    await engine.dispose()
 
 
-app = FastAPI(
-    title="YoshIjodkor Market API",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        settings.CLIENT_URL,
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,13 +34,3 @@ app.include_router(orders.router,        prefix="/api/orders",        tags=["Buy
 app.include_router(custom_orders.router, prefix="/api/custom-orders", tags=["Maxsus buyurtmalar"])
 app.include_router(users.router,         prefix="/api/users",         tags=["Foydalanuvchilar"])
 app.include_router(contact.router,       prefix="/api/contact",       tags=["Aloqa"])
-
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok", "version": "1.0.0"}
-
-
-@app.get("/")
-async def root():
-    return {"message": "YoshIjodkor API ishlayapti!", "docs": "/docs"}

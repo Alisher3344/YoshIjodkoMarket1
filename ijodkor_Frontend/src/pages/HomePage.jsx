@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
-import { featuredCategories } from "../data/products";
-import { categoryLabels } from "../data/translations";
+import { featuredCategories } from "../components/ui/data/products";
+import { categoryLabels } from "../components/ui/data/translations";
 import ProductCard from "../components/product/ProductCard";
 
 export default function HomePage() {
