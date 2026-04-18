@@ -1,17 +1,17 @@
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
 from ..utils.telegram import send_telegram
 
 router = APIRouter()
 
 
 class ContactMessage(BaseModel):
-    name:         str
-    phone:        str
-    message:      str
-    image:        Optional[str] = None
-    image_type:   Optional[str] = None
+    name:       str
+    phone:      str
+    message:    str
+    image:      Optional[str] = None
+    image_type: Optional[str] = None
 
 
 @router.post("/")

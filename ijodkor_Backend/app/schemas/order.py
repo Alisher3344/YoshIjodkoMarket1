@@ -1,31 +1,32 @@
-from typing import Any
+from typing import Any, Optional
 from pydantic import BaseModel
 
 
 class OrderCreate(BaseModel):
-    """Yangi buyurtma yaratish."""
     customer_name:    str
     customer_phone:   str
-    customer_address: str = ""
-    items:            Any = []
+    customer_address: str   = ""
+    city:             str   = ""
+    items:            Any   = []
     total:            float = 0
-    payment_method:   str = "cash"
+    payment_method:   str   = "cash"
+    note:             str   = ""
 
 
 class OrderStatusUpdate(BaseModel):
-    """Buyurtma statusini o'zgartirish."""
     status: str
 
 
 class CustomOrderCreate(BaseModel):
-    """Maxsus buyurtma yaratish."""
-    customer_name:  str
-    customer_phone: str
-    description:    str = ""
-    budget:         str = ""
-    category:       str = ""
+    customer_name:    str
+    customer_phone:   str
+    customer_address: str = ""
+    order_type:       str = ""
+    description:      str = ""
+    budget:           str = ""
+    deadline:         str = ""
+    payment_method:   str = ""
 
 
 class CustomOrderStatusUpdate(BaseModel):
-    """Maxsus buyurtma statusini o'zgartirish."""
     status: str

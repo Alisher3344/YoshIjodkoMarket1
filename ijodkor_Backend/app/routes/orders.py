@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from ..core.database import get_db
 from ..core.security import check_role
 from ..crud import order as order_crud
@@ -11,7 +10,8 @@ router = APIRouter()
 
 @router.post("/")
 async def create_order(data: OrderCreate, db: AsyncSession = Depends(get_db)):
-    return await order_crud.create_order(db, data)
+    order = await order_crud.create_order(db, data)
+    return {"success": True, "id": order.id}
 
 
 @router.get("/", dependencies=[Depends(check_role("moderator"))])

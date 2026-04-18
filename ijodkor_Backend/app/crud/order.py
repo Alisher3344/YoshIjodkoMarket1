@@ -1,47 +1,53 @@
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
 from ..models.order import Order, OrderItem, CustomOrder
 from ..schemas.order import OrderCreate, CustomOrderCreate
 
 
-async def create_order(db: AsyncSession, data: OrderCreate):
+async def create_order(db: AsyncSession, data: OrderCreate) -> Order:
     order = Order(
-        customer_name=data.customer_name,
-        customer_phone=data.customer_phone,
-        customer_address=data.customer_address,
-        total=data.total,
-        payment_method=data.payment_method,
+        customer_name    = data.customer_name,
+        customer_phone   = data.customer_phone,
+        customer_address = data.customer_address,
+        city             = data.city,
+        total            = data.total,
+        payment_method   = data.payment_method,
+        note             = data.note,
     )
     db.add(order)
     await db.flush()
 
     for item in data.items:
-        # item dict yoki object bo'lishi mumkin
         if isinstance(item, dict):
-            product_id = item.get("product_id")
-            name_uz    = item.get("name_uz", "")
-            name_ru    = item.get("name_ru", "")
-            price      = item.get("price", 0)
-            qty        = item.get("qty", 1)
+            oi = OrderItem(
+                order_id     = order.id,
+                product_id   = item.get("product_id"),
+                name_uz      = item.get("name_uz", ""),
+                name_ru      = item.get("name_ru", ""),
+                price        = float(item.get("price", 0)),
+                qty          = int(item.get("qty", 1)),
+                image        = item.get("image", ""),
+                author       = item.get("author", ""),
+                school       = item.get("school", ""),
+                card_number  = item.get("card_number", ""),
+                student_type = item.get("student_type", "normal"),
+            )
         else:
-            product_id = item.product_id
-            name_uz    = item.name_uz
-            name_ru    = item.name_ru
-            price      = item.price
-            qty        = item.qty
-
-        order_item = OrderItem(
-            order_id   = order.id,
-            product_id = product_id,
-            name_uz    = name_uz,
-            name_ru    = name_ru,
-            price      = price,
-            qty        = qty,
-        )
-        db.add(order_item)
+            oi = OrderItem(
+                order_id     = order.id,
+                product_id   = getattr(item, "product_id", None),
+                name_uz      = getattr(item, "name_uz", ""),
+                name_ru      = getattr(item, "name_ru", ""),
+                price        = float(getattr(item, "price", 0)),
+                qty          = int(getattr(item, "qty", 1)),
+                image        = getattr(item, "image", ""),
+                author       = getattr(item, "author", ""),
+                school       = getattr(item, "school", ""),
+                card_number  = getattr(item, "card_number", ""),
+                student_type = getattr(item, "student_type", "normal"),
+            )
+        db.add(oi)
 
     await db.flush()
     await db.refresh(order)
@@ -71,7 +77,7 @@ async def update_order_status(db: AsyncSession, order: Order, status: str):
     await db.flush()
 
 
-async def create_custom_order(db: AsyncSession, data: CustomOrderCreate):
+async def create_custom_order(db: AsyncSession, data: CustomOrderCreate) -> CustomOrder:
     order = CustomOrder(**data.model_dump())
     db.add(order)
     await db.flush()

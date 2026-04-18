@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 
 class UserCreate(BaseModel):
-    """Yangi user yaratish — parol majburiy."""
     name:     str
     username: str
     password: str
@@ -12,16 +11,14 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """User yangilash — parol ixtiyoriy."""
     name:     str
     username: str
     email:    str = ""
     role:     str = "admin"
-    password: Optional[str] = None  # None bo'lsa parol o'zgarmaydi
+    password: Optional[str] = None
 
 
 class UserResponse(BaseModel):
-    """Frontendga qaytariladi — parol yuborilmaydi."""
     id:       int
     name:     str
     username: str
@@ -30,4 +27,4 @@ class UserResponse(BaseModel):
     active:   bool
 
     class Config:
-        from_attributes = True  # SQLAlchemy modeldan o'qiydi
+        from_attributes = True

@@ -25,7 +25,7 @@ async def main():
         ))
         await db.commit()
 
-    print("✅ Superadmin yaratildi!")
+    print("✅ Admin yaratildi!")
     print("   Username : admin")
     print("   Parol    : admin123")
 

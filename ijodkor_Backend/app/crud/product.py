@@ -1,13 +1,11 @@
-from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
-
 from ..models.product import Product
 from ..schemas.product import ProductCreate
 
 
-async def get_all(db: AsyncSession, category=None, search=None):
-    q = select(Product)
+async def get_all(db: AsyncSession, category: str = None, search: str = None):
+    q = select(Product).order_by(Product.created_at.desc())
     if category and category != "all":
         q = q.where(Product.category == category)
     if search:
@@ -26,7 +24,7 @@ async def get_by_id(db: AsyncSession, product_id: int):
     return result.scalar_one_or_none()
 
 
-async def create(db: AsyncSession, data: ProductCreate):
+async def create(db: AsyncSession, data: ProductCreate) -> Product:
     product = Product(**data.model_dump())
     db.add(product)
     await db.flush()
@@ -34,7 +32,7 @@ async def create(db: AsyncSession, data: ProductCreate):
     return product
 
 
-async def update(db: AsyncSession, product: Product, data: ProductCreate):
+async def update(db: AsyncSession, product: Product, data: ProductCreate) -> Product:
     for key, value in data.model_dump().items():
         setattr(product, key, value)
     await db.flush()

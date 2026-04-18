@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from ..core.database import get_db
 from ..core.security import check_role, require_superadmin
 from ..crud import user as user_crud
@@ -16,19 +15,21 @@ async def get_users(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", dependencies=[Depends(check_role("admin"))])
 async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    exists = await user_crud.get_by_username(db, data.username)
-    if exists:
+    if await user_crud.get_by_username(db, data.username):
         raise HTTPException(status_code=400, detail="Bu username band")
     return await user_crud.create(db, data)
 
 
 @router.put("/{user_id}", dependencies=[Depends(check_role("admin"))])
-async def update_user(user_id: int, data: UserUpdate, db: AsyncSession = Depends(get_db)):
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+):
     user = await user_crud.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
-    await user_crud.update(db, user, data)
-    return {"success": True}
+    return await user_crud.update(db, user, data)
 
 
 @router.delete("/{user_id}", dependencies=[Depends(require_superadmin)])
@@ -45,5 +46,5 @@ async def toggle_user(user_id: int, db: AsyncSession = Depends(get_db)):
     user = await user_crud.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
-    await user_crud.toggle_active(db, user)
-    return {"success": True, "active": user.active}
+    updated = await user_crud.toggle_active(db, user)
+    return {"success": True, "active": updated.active}

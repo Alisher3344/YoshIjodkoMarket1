@@ -28,8 +28,7 @@ export default function HomePage() {
     fetchProducts();
   }, []);
 
-  const allProds =
-    apiProducts && apiProducts.length > 0 ? apiProducts : seedProducts;
+  const allProds = apiProducts || [];
   const cats = categoryLabels[lang];
   const newProds = [...allProds].sort((a, b) => b.id - a.id).slice(0, 8);
   const hitProds = [...allProds]
@@ -169,7 +168,6 @@ export default function HomePage() {
               const disabledProds = allProds.filter(
                 (p) => p.studentType === "disabled"
               );
-              // Sotilgan mahsulotlar summasiga qarab guruhlash
               const authorMap = {};
               disabledProds.forEach((p) => {
                 const key = p.author;
@@ -211,7 +209,6 @@ export default function HomePage() {
                   key={i}
                   className={`${medalColors[i]} rounded-2xl p-3 text-white flex items-center gap-3`}
                 >
-                  {/* Rasm — katta, chap tomonda */}
                   {s.photo ? (
                     <img
                       src={s.photo}
@@ -224,7 +221,6 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {/* Ism va maktab */}
                   <div className="flex-1 min-w-0">
                     <div className="font-black text-sm leading-tight truncate">
                       {lang === "uz" ? s.author : s.authorRu}
@@ -237,7 +233,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* O'rin — o'ng tomonda */}
                   <div className="flex flex-col items-center gap-1 flex-shrink-0">
                     <div className="text-2xl">{medals[i]}</div>
                     <div className="bg-white/25 rounded-lg px-2 py-0.5 text-xs font-black">

@@ -1,43 +1,68 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
 class ProductCreate(BaseModel):
-    """Mahsulot yaratish va yangilash uchun."""
-    name_uz:  str
-    name_ru:  str = ""
-    desc_uz:  str = ""
-    desc_ru:  str = ""
-    price:    float = Field(..., gt=0, description="Narx 0 dan katta bo'lishi kerak")
-    stock:    int   = Field(1, ge=0, description="Qoldiq manfiy bo'lmaydi")
-    category: str = ""
-    author:   str = ""
-    class_uz: str = ""
-    class_ru: str = ""
-    school:   str = ""
-    district: str = ""
-    phone:    str = ""
-    image:    str = ""
-    is_new:   bool = True
+    name_uz:      str   = Field(..., description="O'zbek nomи")
+    name_ru:      str   = ""
+    desc_uz:      str   = ""
+    desc_ru:      str   = ""
+    price:        float = Field(..., gt=0)
+    old_price:    Optional[float] = None
+    stock:        int   = Field(1, ge=0)
+    category:     str   = ""
+    badge:        str   = ""
+    author:       str   = ""
+    author_ru:    str   = ""
+    school:       str   = ""
+    school_ru:    str   = ""
+    grade:        str   = ""
+    district:     str   = ""
+    district_ru:  str   = ""
+    region:       str   = ""
+    region_ru:    str   = ""
+    phone:        str   = ""
+    student_type: str   = "normal"
+    card_number:  str   = ""
+    story_uz:     str   = ""
+    story_ru:     str   = ""
+    photo:        str   = ""
+    image:        str   = ""
+    rating:       float = 5.0
+    reviews:      int   = 0
+    sold:         int   = 0
 
 
 class ProductResponse(BaseModel):
-    """Frontendga qaytariladigan mahsulot ma'lumotlari."""
-    id:       int
-    name_uz:  str
-    name_ru:  str
-    desc_uz:  str
-    desc_ru:  str
-    price:    float
-    stock:    int
-    category: str
-    author:   str
-    class_uz: str
-    class_ru: str
-    school:   str
-    district: str
-    phone:    str
-    image:    str
-    is_new:   bool
+    id:           int
+    name_uz:      str
+    name_ru:      str
+    desc_uz:      str
+    desc_ru:      str
+    price:        float
+    old_price:    Optional[float]
+    stock:        int
+    category:     str
+    badge:        str
+    author:       str
+    author_ru:    str
+    school:       str
+    school_ru:    str
+    grade:        str
+    district:     str
+    district_ru:  str
+    region:       str
+    region_ru:    str
+    phone:        str
+    student_type: str
+    card_number:  str
+    story_uz:     str
+    story_ru:     str
+    photo:        str
+    image:        str
+    rating:       float
+    reviews:      int
+    sold:         int
 
     class Config:
-        from_attributes = True  # SQLAlchemy modeldan o'qiydi
+        from_attributes = True
