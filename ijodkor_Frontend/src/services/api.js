@@ -78,4 +78,9 @@ export const api = {
   updateProfile: (data) => request("PUT", "/auth/profile", data),
   getMySales: () =>
     request("GET", "/auth/my-sales").then((r) => (Array.isArray(r) ? r : [])),
+  getProductsByUser: (userId) =>
+    request("GET", `/products/user/${userId}`).then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  sendContact: (data) => request("POST", "/contact/", data),
 };

@@ -1,433 +1,308 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  ShoppingCart,
-  ArrowLeft,
-  Star,
-  Plus,
-  Minus,
-  Share2,
-  Heart,
-  CheckCircle,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search, SlidersHorizontal, X, Heart } from "lucide-react";
 import useStore from "../store/useStore";
+import { categoryLabels } from "../components/ui/data/translations";
 import ProductCard from "../components/product/ProductCard";
-import DonationModal from "../components/ui/DonationModal";
 
-export default function ProductPage() {
-  const { id } = useParams();
+export default function CatalogPage() {
   const navigate = useNavigate();
-  const { t, lang, addToCart, products, fetchProducts } = useStore();
-  const [qty, setQty] = useState(1);
-  const [added, setAdded] = useState(false);
-  const [tab, setTab] = useState("desc");
-  const [donateOpen, setDonateOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  const {
+    lang,
+    products,
+    productsLoading,
+    fetchProducts,
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+  } = useStore();
+
+  const [priceRange, setPriceRange] = useState([0, 10000000]);
+  const [onlyDisabled, setOnlyDisabled] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const cats = categoryLabels[lang];
 
   useEffect(() => {
-    if (products.length === 0) fetchProducts();
+    fetchProducts();
   }, []);
 
-  const product = products.find((p) => p.id === parseInt(id) || p.id === id);
-  const isDisabled = product?.studentType === "disabled";
+  // URL dan kategoriya olish
+  useEffect(() => {
+    const cat = searchParams.get("category");
+    if (cat) setSelectedCategory(cat);
+  }, [searchParams]);
 
-  if (!product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="text-6xl mb-4">😕</div>
-        <h2 className="text-xl font-bold mb-4">
-          {lang === "uz" ? "Mahsulot topilmadi" : "Товар не найден"}
-        </h2>
-        <button
-          onClick={() => navigate("/catalog")}
-          className="bg-[#1a56db] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#1341a8] transition"
-        >
-          {t("catalog")}
-        </button>
-      </div>
+  // Filter
+  let filtered = Array.isArray(products) ? [...products] : [];
+
+  // Kategoriya
+  if (selectedCategory && selectedCategory !== "all") {
+    filtered = filtered.filter((p) => p.category === selectedCategory);
+  }
+
+  // Qidiruv
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter((p) => {
+      const n1 = (p.nameUz || p.name_uz || "").toLowerCase();
+      const n2 = (p.nameRu || p.name_ru || "").toLowerCase();
+      const a = (p.author || "").toLowerCase();
+      const s = (p.school || "").toLowerCase();
+      return n1.includes(q) || n2.includes(q) || a.includes(q) || s.includes(q);
+    });
+  }
+
+  // Narx
+  filtered = filtered.filter((p) => {
+    const price = p.price || 0;
+    return price >= priceRange[0] && price <= priceRange[1];
+  });
+
+  // Faqat imkoniyati cheklanganlar
+  if (onlyDisabled) {
+    filtered = filtered.filter(
+      (p) => (p.studentType || p.student_type) === "disabled"
     );
   }
 
-  const name =
-    lang === "uz" ? product.nameUz : product.nameRu || product.nameUz;
-  const desc =
-    lang === "uz" ? product.descUz : product.descRu || product.descUz;
-  const author =
-    lang === "uz" ? product.author : product.authorRu || product.author;
-  const school =
-    lang === "uz" ? product.school : product.schoolRu || product.school;
-  const district =
-    lang === "uz" ? product.district : product.districtRu || product.district;
-  const region =
-    lang === "uz" ? product.region : product.regionRu || product.region;
-  const formatPrice = (n) => n.toLocaleString() + " so'm";
-  const discount = product.oldPrice
-    ? Math.round((1 - product.price / product.oldPrice) * 100)
-    : 0;
+  // Sort
+  if (sortBy === "cheap")
+    filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+  if (sortBy === "expensive")
+    filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
+  if (sortBy === "rating")
+    filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  if (sortBy === "popular")
+    filtered.sort((a, b) => (b.sold || 0) - (a.sold || 0));
 
-  const related = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
-
-  const handleAdd = () => {
-    for (let i = 0; i < qty; i++) addToCart(product);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const clearFilters = () => {
+    setSelectedCategory("all");
+    setSearchQuery("");
+    setPriceRange([0, 10000000]);
+    setOnlyDisabled(false);
+    setSortBy("newest");
   };
 
+  const hasActiveFilters =
+    selectedCategory !== "all" ||
+    searchQuery ||
+    priceRange[0] > 0 ||
+    priceRange[1] < 10000000 ||
+    onlyDisabled;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 min-h-screen">
-      {/* Breadcrumb */}
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
+          {lang === "uz" ? "Mahsulotlar katalogi" : "Каталог товаров"}
+        </h1>
+        <p className="text-sm text-gray-500">
+          {lang === "uz"
+            ? `Jami: ${filtered.length} ta mahsulot`
+            : `Всего: ${filtered.length} товаров`}
+        </p>
+      </div>
+
+      {/* Mobile filter toggle */}
       <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#1a56db] mb-6 transition font-medium"
+        onClick={() => setShowFilters(!showFilters)}
+        className="lg:hidden flex items-center gap-2 bg-[#1a56db] text-white px-4 py-2.5 rounded-xl font-bold text-sm mb-4"
       >
-        <ArrowLeft size={16} />
-        {lang === "uz" ? "Orqaga" : "Назад"}
+        <SlidersHorizontal size={16} />
+        {lang === "uz" ? "Filtrlar" : "Фильтры"}
+        {hasActiveFilters && (
+          <span className="bg-white text-[#1a56db] text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
+            !
+          </span>
+        )}
       </button>
 
-      {/* Main */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-        {/* Image */}
-        <div className="space-y-3">
-          <div className="bg-white rounded-2xl overflow-hidden aspect-square shadow-sm border border-gray-100 relative">
-            <img
-              src={product.image}
-              alt={name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.src =
-                  "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&q=80";
-              }}
-            />
-            {product.badge && (
-              <span
-                className={`absolute top-4 left-4 text-xs font-black uppercase px-3 py-1.5 rounded-full ${
-                  product.badge === "new"
-                    ? "bg-green-500"
-                    : product.badge === "hit"
-                    ? "bg-red-500"
-                    : "bg-orange-500"
-                } text-white`}
-              >
-                {t(product.badge)}
-              </span>
-            )}
-            {discount > 0 && (
-              <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full">
-                -{discount}%
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
-              {name}
-            </h1>
-            {isDisabled ? (
-              <span className="bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1">
-                ❤️ {lang === "uz" ? "Maxsus ehtiyojli" : "Особые потребности"}
-              </span>
-            ) : (
-              <span className="bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1">
-                🌟 {lang === "uz" ? "Rag'bat" : "Поощрение"}
-              </span>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+        {/* ── Sidebar filtrlari ──────────────────────────────────────── */}
+        <aside
+          className={`space-y-4 ${showFilters ? "block" : "hidden lg:block"}`}
+        >
+          {/* Kategoriyalar */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <h3 className="font-black text-sm text-gray-800 mb-3">
+              {lang === "uz" ? "Kategoriyalar" : "Категории"}
+            </h3>
+            <div className="space-y-1">
+              {Object.entries(cats).map(([key, label]) => {
+                const count =
+                  key === "all"
+                    ? products.length
+                    : products.filter((p) => p.category === key).length;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedCategory(key)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition ${
+                      selectedCategory === key
+                        ? "bg-blue-50 text-[#1a56db] font-bold"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="truncate">{label}</span>
+                    <span className="text-xs text-gray-400 ml-2">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Rating */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={16}
-                  className={
-                    i < Math.floor(product.rating || 0)
-                      ? "text-yellow-400 fill-yellow-400"
-                      : "text-gray-200 fill-gray-200"
-                  }
-                />
+          {/* Narx */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <h3 className="font-black text-sm text-gray-800 mb-3">
+              {lang === "uz" ? "Narx diapazoni" : "Цена"}
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder={lang === "uz" ? "Dan" : "От"}
+                value={priceRange[0] || ""}
+                onChange={(e) =>
+                  setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])
+                }
+                className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#1a56db]"
+              />
+              <input
+                type="number"
+                placeholder={lang === "uz" ? "Gacha" : "До"}
+                value={priceRange[1] === 10000000 ? "" : priceRange[1]}
+                onChange={(e) =>
+                  setPriceRange([
+                    priceRange[0],
+                    parseInt(e.target.value) || 10000000,
+                  ])
+                }
+                className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#1a56db]"
+              />
+            </div>
+          </div>
+
+          {/* Faqat imkoniyati cheklanganlar */}
+          <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-4 border-2 border-rose-100">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={onlyDisabled}
+                onChange={(e) => setOnlyDisabled(e.target.checked)}
+                className="w-5 h-5 accent-rose-500"
+              />
+              <div>
+                <div className="font-bold text-sm text-rose-700 flex items-center gap-1">
+                  <Heart size={12} className="fill-rose-500" />
+                  {lang === "uz"
+                    ? "Imkoniyati cheklanganlar"
+                    : "С огр. возможностями"}
+                </div>
+                <div className="text-xs text-rose-500 mt-0.5">
+                  {lang === "uz" ? "Ularga yordam bering" : "Помощь им"}
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {/* Reset */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-2.5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"
+            >
+              <X size={14} />
+              {lang === "uz" ? "Filtrlarni tozalash" : "Сбросить фильтры"}
+            </button>
+          )}
+        </aside>
+
+        {/* ── Mahsulotlar ────────────────────────────────────────────── */}
+        <main>
+          {/* Top bar — search + sort */}
+          <div className="bg-white rounded-2xl p-3 border border-gray-100 mb-4 flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+              <Search size={16} className="text-gray-400" />
+              <input
+                type="text"
+                placeholder={lang === "uz" ? "Qidirish..." : "Поиск..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent outline-none text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none font-medium cursor-pointer"
+            >
+              <option value="newest">
+                {lang === "uz" ? "Yangilar" : "Новые"}
+              </option>
+              <option value="cheap">
+                {lang === "uz" ? "Arzon" : "Дешёвые"}
+              </option>
+              <option value="expensive">
+                {lang === "uz" ? "Qimmat" : "Дорогие"}
+              </option>
+              <option value="rating">
+                {lang === "uz" ? "Reyting" : "Рейтинг"}
+              </option>
+              <option value="popular">
+                {lang === "uz" ? "Mashhur" : "Популярные"}
+              </option>
+            </select>
+          </div>
+
+          {/* Content */}
+          {productsLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin h-12 w-12 border-4 border-[#1a56db] border-t-transparent rounded-full"></div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+              <div className="text-6xl mb-3">🥺</div>
+              <h3 className="font-bold text-lg text-gray-800 mb-2">
+                {lang === "uz" ? "Mahsulot topilmadi" : "Товары не найдены"}
+              </h3>
+              <p className="text-gray-500 text-sm mb-4">
+                {lang === "uz"
+                  ? "Filtrlarni o'zgartirib ko'ring yoki qidiruv so'zini almashtiring"
+                  : "Попробуйте изменить фильтры или поисковый запрос"}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="bg-[#1a56db] hover:bg-[#1341a8] text-white px-6 py-2.5 rounded-xl font-bold text-sm transition"
+                >
+                  {lang === "uz" ? "Filtrlarni tozalash" : "Сбросить фильтры"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
-            <span className="font-bold text-gray-700">{product.rating}</span>
-            <span className="text-gray-400 text-sm">
-              ({product.reviews} {lang === "uz" ? "sharh" : "отзывов"})
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className="text-gray-400 text-sm">
-              📦 {product.sold || 0} {lang === "uz" ? "sotilgan" : "продано"}
-            </span>
-          </div>
-
-          {/* Price */}
-          <div className="bg-blue-50 rounded-2xl p-4">
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-black text-[#1a56db]">
-                {formatPrice(product.price)}
-              </span>
-              {product.oldPrice && (
-                <span className="text-lg text-gray-400 line-through">
-                  {formatPrice(product.oldPrice)}
-                </span>
-              )}
-            </div>
-            {discount > 0 && (
-              <p className="text-green-600 text-sm font-semibold mt-1 flex items-center gap-1">
-                <CheckCircle size={14} />
-                {lang === "uz"
-                  ? `${formatPrice(product.oldPrice - product.price)} tejaysiz!`
-                  : `Вы экономите ${formatPrice(
-                      product.oldPrice - product.price
-                    )}!`}
-              </p>
-            )}
-          </div>
-
-          {/* Author info */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-            {region && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 font-medium">
-                  {lang === "uz" ? "Viloyat" : "Область"}:
-                </span>
-                <span className="font-bold text-gray-800">{region}</span>
-              </div>
-            )}
-            {district && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500 font-medium">
-                  {lang === "uz" ? "Tuman" : "Район"}:
-                </span>
-                <span className="font-bold text-gray-800">{district}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">{t("school")}:</span>
-              <span className="font-bold text-gray-800">{school}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">{t("grade")}:</span>
-              <span className="font-bold text-gray-800">{product.grade}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">{t("author")}:</span>
-              <span className="font-bold text-gray-800">{author}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500 font-medium">{t("inStock")}:</span>
-              <span
-                className={`font-bold ${
-                  product.stock > 0 ? "text-green-600" : "text-red-500"
-                }`}
-              >
-                {product.stock > 0
-                  ? `${product.stock} ${t("pieces")}`
-                  : t("outOfStock")}
-              </span>
-            </div>
-          </div>
-
-          {/* Qty + Add to cart */}
-          {product.stock > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2">
-                <button
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="text-gray-600 hover:text-[#1a56db] transition"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="w-8 text-center font-bold text-lg">{qty}</span>
-                <button
-                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                  className="text-gray-600 hover:text-[#1a56db] transition"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
-
-              <button
-                onClick={handleAdd}
-                className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-base transition ${
-                  added
-                    ? "bg-green-500 text-white"
-                    : "bg-[#1a56db] hover:bg-[#1341a8] text-white"
-                }`}
-              >
-                {added ? (
-                  <>
-                    <CheckCircle size={18} />{" "}
-                    {lang === "uz"
-                      ? "Savatga qo'shildi!"
-                      : "Добавлено в корзину!"}
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={18} /> {t("addToCart")}
-                  </>
-                )}
-              </button>
-            </div>
           )}
-
-          {/* Hozir sotib ol */}
-          <button
-            onClick={() => {
-              if (product.stock > 0) {
-                handleAdd();
-                navigate("/checkout");
-              }
-            }}
-            disabled={product.stock === 0}
-            className={`w-full py-3.5 rounded-xl font-bold text-base transition ${
-              product.stock === 0
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-[#f97316] hover:bg-[#c2570d] text-white"
-            }`}
-          >
-            {t("buyNow")} →
-          </button>
-
-          {/* Nogiron o'quvchi uchun ehson tugmasi */}
-          {isDisabled && (
-            <button
-              onClick={() => setDonateOpen(true)}
-              className="w-full py-3.5 rounded-xl font-bold text-base bg-rose-500 hover:bg-rose-600 text-white transition flex items-center justify-center gap-2"
-            >
-              ❤️{" "}
-              {lang === "uz"
-                ? "Ehson qilish (kartaga pul o'tkazish)"
-                : "Пожертвовать (перевод на карту)"}
-            </button>
-          )}
-
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 text-gray-500 hover:text-red-500 text-sm transition">
-              <Heart size={16} />
-              {lang === "uz" ? "Sevimlilar" : "Избранное"}
-            </button>
-            <button className="flex items-center gap-2 text-gray-500 hover:text-[#1a56db] text-sm transition">
-              <Share2 size={16} />
-              {lang === "uz" ? "Ulashish" : "Поделиться"}
-            </button>
-          </div>
-        </div>
+        </main>
       </div>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-        <div className="flex gap-4 border-b border-gray-100 mb-5">
-          {[
-            { key: "desc", label: t("description") },
-            { key: "reviews", label: `${t("reviews")} (${product.reviews})` },
-          ].map((tab_) => (
-            <button
-              key={tab_.key}
-              onClick={() => setTab(tab_.key)}
-              className={`pb-3 font-bold text-sm transition border-b-2 -mb-px ${
-                tab === tab_.key
-                  ? "text-[#1a56db] border-[#1a56db]"
-                  : "text-gray-400 border-transparent"
-              }`}
-            >
-              {tab_.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === "desc" ? (
-          <div>
-            <p className="text-gray-700 leading-relaxed">{desc}</p>
-            {/* Nogiron o'quvchi hikoyasi */}
-            {isDisabled &&
-              (lang === "uz" ? product.storyUz : product.storyRu) && (
-                <div className="mt-4 bg-rose-50 border border-rose-100 rounded-xl p-4 flex gap-4">
-                  {product.photo && (
-                    <img
-                      src={product.photo}
-                      alt={name}
-                      className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border-2 border-rose-200"
-                    />
-                  )}
-                  <div>
-                    <p className="text-xs font-black text-rose-600 mb-1 flex items-center gap-1">
-                      ❤️ {lang === "uz" ? "O'quvchi haqida" : "Об ученике"}
-                    </p>
-                    <p className="text-sm text-gray-700 italic leading-relaxed">
-                      "{lang === "uz" ? product.storyUz : product.storyRu}"
-                    </p>
-                  </div>
-                </div>
-              )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="flex gap-3 pb-4 border-b border-gray-100 last:border-0"
-              >
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-lg flex-shrink-0">
-                  {["👩", "👨", "🧑"][i]}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-sm">
-                      {["Dilnoza K.", "Ahmad T.", "Sabohat M."][i]}
-                    </span>
-                    <div className="flex">
-                      {[...Array(5)].map((_, j) => (
-                        <Star
-                          key={j}
-                          size={11}
-                          className="text-yellow-400 fill-yellow-400"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {
-                      [
-                        lang === "uz"
-                          ? "Juda chiroyli ish! Farzandim juda xursand bo'ldi."
-                          : "Очень красивая работа! Мой ребёнок очень обрадовался.",
-                        lang === "uz"
-                          ? "Sifat a'lo, tezda yetkazib berishdi. Tavsiya qilaman!"
-                          : "Качество отличное, доставили быстро. Рекомендую!",
-                        lang === "uz"
-                          ? "Noyob sovg'a, hammaga maqul keldi."
-                          : "Уникальный подарок, всем понравился.",
-                      ][i]
-                    }
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Related */}
-      {related.length > 0 && (
-        <div>
-          <h2 className="text-xl font-black text-gray-800 mb-5">
-            {t("related")}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Donation modal */}
-      {donateOpen && (
-        <DonationModal product={product} onClose={() => setDonateOpen(false)} />
-      )}
     </div>
   );
 }

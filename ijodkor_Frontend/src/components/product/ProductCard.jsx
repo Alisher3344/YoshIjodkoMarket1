@@ -1,268 +1,359 @@
-import { useState } from "react";
+import { ShoppingCart, Heart, Star, MapPin, School } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Star, ShoppingCart, Eye, Heart, Copy, Check, X } from "lucide-react";
+import { useState } from "react";
 import useStore from "../../store/useStore";
 
 export default function ProductCard({ product }) {
+  const { lang, addToCart } = useStore();
   const navigate = useNavigate();
-  const { t, lang, addToCart } = useStore();
-  const [cardOpen, setCardOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [showDonation, setShowDonation] = useState(false);
+
+  const isDisabled =
+    product.studentType === "disabled" || product.student_type === "disabled";
+  const authorAvatar =
+    product.authorAvatar || product.author_avatar || product.photo || "";
+  const authorName =
+    lang === "uz"
+      ? product.fullName || product.full_name || product.author || ""
+      : product.authorRu || product.author_ru || product.author || "";
+  const authorSchool =
+    lang === "uz"
+      ? product.school || ""
+      : product.schoolRu || product.school || "";
+  const authorGrade = product.grade || "";
+  const authorDistrict =
+    lang === "uz"
+      ? product.district || ""
+      : product.districtRu || product.district || "";
+  const authorRegion =
+    lang === "uz"
+      ? product.region || ""
+      : product.regionRu || product.region || "";
 
   const name =
-    lang === "uz" ? product.nameUz : product.nameRu || product.nameUz;
-  const author =
-    lang === "uz" ? product.author : product.authorRu || product.author;
-  const school =
-    lang === "uz" ? product.school : product.schoolRu || product.school;
+    lang === "uz"
+      ? product.nameUz || product.name_uz
+      : product.nameRu || product.name_ru || product.nameUz || product.name_uz;
 
-  const isDisabled = product.studentType === "disabled";
-  const formatPrice = (n) => (n || 0).toLocaleString() + " so'm";
-  const discount = product.oldPrice
-    ? Math.round((1 - product.price / product.oldPrice) * 100)
+  const formatPrice = (n) => (n || 0).toLocaleString("uz-UZ") + " so'm";
+
+  const hasDiscount = product.oldPrice && product.oldPrice > product.price;
+  const discountPercent = hasDiscount
+    ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0;
 
-  const handleAdd = (e) => {
+  const copyCard = (e) => {
     e.stopPropagation();
-    addToCart(product);
-  };
-
-  const handleCopy = (e) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(product.cardNumber || "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const card = product.cardNumber || product.card_number || "";
+    if (card) {
+      navigator.clipboard.writeText(card.replace(/\s/g, ""));
+      alert(
+        lang === "uz"
+          ? "✅ Karta raqami nusxalandi!"
+          : "✅ Номер карты скопирован!"
+      );
+    }
   };
 
   return (
     <>
-      <div
-        onClick={() => navigate(`/product/${product.id}`)}
-        className="product-card bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition cursor-pointer group relative"
-      >
-        {/* Image */}
-        <div className="aspect-square bg-gray-50 overflow-hidden relative">
-          <img
-            src={
-              product.image ||
-              "https://placehold.co/400x400/e2e8f0/64748b?text=Rasm"
-            }
-            alt={name}
-            className="w-full h-full object-cover product-img transition-transform duration-500"
-            onError={(e) => {
-              e.target.src = "https://via.placeholder.com/400";
-            }}
-          />
-
-          {/* Top-left badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.badge === "new" && (
-              <span className="bg-green-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                {t("new")}
-              </span>
+      {/* TASHQI konteyner: overflow-visible (avatar chiqib turishi uchun) */}
+      <div className="product-card bg-white rounded-2xl border border-gray-100 hover:shadow-xl transition-all group relative flex flex-col">
+        {/* Rasm qismi — overflow-hidden faqat rasm uchun */}
+        <div
+          onClick={() => navigate(`/product/${product.id}`)}
+          className="aspect-square bg-gray-100 relative cursor-pointer rounded-t-2xl"
+        >
+          {/* Rasm konteyneri (faqat rasm overflow-hidden) */}
+          <div className="absolute inset-0 overflow-hidden rounded-t-2xl">
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  e.target.src =
+                    "https://placehold.co/400x400/e2e8f0/64748b?text=Rasm";
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-6xl">
+                📦
+              </div>
             )}
-            {product.badge === "hit" && (
-              <span className="bg-red-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                {t("hit")}
+          </div>
+
+          {/* TOP-LEFT badges */}
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+            {product.badge === "new" && (
+              <span className="bg-green-500 text-white px-3 py-1 rounded-full text-[11px] font-black uppercase shadow-md">
+                {lang === "uz" ? "YANGI" : "НОВЫЙ"}
               </span>
             )}
             {product.badge === "sale" && (
-              <span className="bg-orange-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                {t("sale")}
+              <span className="bg-orange-500 text-white px-3 py-1 rounded-full text-[11px] font-black uppercase shadow-md">
+                {lang === "uz" ? "CHEGIRMA" : "СКИДКА"}
               </span>
             )}
-            {discount > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                -{discount}%
+            {product.badge === "hit" && (
+              <span className="bg-orange-400 text-white px-3 py-1 rounded-full text-[11px] font-black uppercase shadow-md flex items-center gap-1">
+                🏆 {lang === "uz" ? "Rag'bat" : "ХИТ"}
+              </span>
+            )}
+            {isDisabled && (
+              <span className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-3 py-1 rounded-full text-[11px] font-black shadow-md flex items-center gap-1">
+                ❤️ {lang === "uz" ? "Imkoniyati cheklangan" : "Особый"}
               </span>
             )}
           </div>
 
-          {/* Disabled marker — top right */}
-          {isDisabled && (
-            <div className="absolute top-2 right-2 bg-rose-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md">
-              <Heart size={14} className="fill-white" />
-            </div>
-          )}
-
-          {/* Quick view */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/product/${product.id}`);
-            }}
-            className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md hover:bg-white"
-          >
-            <Eye size={14} className="text-gray-700" />
-          </button>
-        </div>
-
-        {/* Info */}
-        <div className="p-3">
-          {/* Rating */}
-          {product.rating > 0 && (
-            <div className="flex items-center gap-1 mb-1">
-              <Star size={11} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-xs font-bold text-gray-700">
-                {product.rating}
+          {/* TOP-RIGHT */}
+          <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 items-end">
+            {hasDiscount && (
+              <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-black shadow-md">
+                -{discountPercent}%
               </span>
-              <span className="text-xs text-gray-400">
-                ({product.reviews || 0})
-              </span>
-            </div>
-          )}
-
-          {/* Name */}
-          <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight min-h-[2.5rem]">
-            {name}
-          </h3>
-
-          {/* Author */}
-          {author && (
-            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-              👤 {author}
-              {school && <span className="text-gray-400"> · {school}</span>}
-            </div>
-          )}
-
-          {/* Price */}
-          <div className="flex items-end justify-between mt-2">
-            <div>
-              <div className="text-base font-black text-[#1a56db] leading-tight">
-                {formatPrice(product.price)}
-              </div>
-              {product.oldPrice && (
-                <div className="text-gray-400 text-xs line-through">
-                  {formatPrice(product.oldPrice)}
-                </div>
-              )}
-            </div>
-
+            )}
             <button
-              onClick={handleAdd}
-              disabled={product.stock === 0}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
-                product.stock === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-[#1a56db] hover:bg-[#1341a8] text-white shadow-md"
-              }`}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white/90 backdrop-blur-sm w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-rose-50 transition"
             >
-              <ShoppingCart size={14} />
+              <Heart size={15} className="text-gray-400 hover:text-rose-500" />
             </button>
           </div>
 
-          {/* Imkoniyati cheklangan — maxsus tugma */}
+          {/* BOTTOM-CENTER: AVATAR — endi rasmning tashqarisida ko'rinadi! */}
           {isDisabled && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCardOpen(true);
+                setShowDonation(true);
               }}
-              className="w-full mt-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 text-xs font-black py-2 rounded-lg transition flex items-center justify-center gap-1"
+              className="absolute left-1/2 -bottom-10 -translate-x-1/2 z-30"
+              title={lang === "uz" ? "Yordam berish" : "Помочь"}
             >
-              <Heart size={12} className="fill-rose-500" />
-              {lang === "uz" ? "Imkoniyati cheklangan" : "Особые потребности"}
+              <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-rose-100 to-pink-100 hover:scale-110 transition-transform">
+                {authorAvatar ? (
+                  <img
+                    src={authorAvatar}
+                    alt={authorName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.innerHTML =
+                        '<div class="w-full h-full flex items-center justify-center text-3xl">❤️</div>';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-3xl">
+                    ❤️
+                  </div>
+                )}
+              </div>
+              {/* Small heart indicator — alohida konteyner */}
+              <div className="absolute -bottom-1 right-0 bg-rose-500 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-md z-40">
+                <Heart size={10} className="fill-white" />
+              </div>
             </button>
           )}
         </div>
+
+        {/* Ma'lumot */}
+        <div
+          className={`p-3 flex flex-col flex-1 ${
+            isDisabled ? "pt-12" : "pt-3"
+          }`}
+        >
+          {/* Viloyat, Tuman */}
+          {(authorRegion || authorDistrict) && (
+            <div className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+              <MapPin size={10} className="text-[#1a56db] flex-shrink-0" />
+              <span className="truncate">
+                {[authorRegion, authorDistrict].filter(Boolean).join(", ")}
+              </span>
+            </div>
+          )}
+
+          {/* Maktab, Sinf */}
+          {(authorSchool || authorGrade) && (
+            <div className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+              <School size={10} className="flex-shrink-0" />
+              <span className="truncate">
+                {authorSchool}
+                {authorGrade &&
+                  ` · ${
+                    lang === "uz"
+                      ? `Sinf ${authorGrade}`
+                      : `Класс ${authorGrade}`
+                  }`}
+              </span>
+            </div>
+          )}
+
+          {/* Mahsulot nomi */}
+          <h3
+            onClick={() => navigate(`/product/${product.id}`)}
+            className="font-black text-sm text-gray-900 line-clamp-2 mb-2 min-h-[40px] cursor-pointer hover:text-[#1a56db] transition"
+          >
+            {name}
+          </h3>
+
+          {/* Rating va sold */}
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1">
+              <Star size={12} className="fill-yellow-400 text-yellow-400" />
+              <span className="text-xs font-bold text-gray-700">
+                {product.rating || 5}
+              </span>
+              <span className="text-[10px] text-gray-400">
+                ({product.reviews || 0})
+              </span>
+            </div>
+            {product.sold > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                🎖️ <span className="font-bold">{product.sold}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Muallif ismi */}
+          {authorName && (
+            <div className="text-xs text-gray-600 mb-2 line-clamp-1">
+              ✍️ <span className="font-semibold">{authorName}</span>
+            </div>
+          )}
+
+          {/* Narx */}
+          <div className="flex items-baseline gap-2 mb-3 mt-auto">
+            <span className="text-[#1a56db] font-black text-base">
+              {formatPrice(product.price)}
+            </span>
+            {hasDiscount && (
+              <span className="text-xs text-gray-400 line-through">
+                {formatPrice(product.oldPrice)}
+              </span>
+            )}
+          </div>
+
+          {/* Tugmalar */}
+          <div className="flex flex-col gap-2">
+            {isDisabled && (
+              <button
+                onClick={() => setShowDonation(true)}
+                className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-2.5 rounded-xl text-sm font-black shadow-md hover:shadow-lg transition"
+              >
+                ❤️ {lang === "uz" ? "Imkoniyati cheklangan" : "Помощь"}
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addToCart(product);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white py-2.5 rounded-xl text-sm font-bold transition"
+            >
+              <ShoppingCart size={14} />
+              {lang === "uz" ? "Savatga qo'shish" : "В корзину"}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Card number modal */}
-      {cardOpen && (
+      {/* Donation modal */}
+      {showDonation && (
         <div
-          onClick={() => setCardOpen(false)}
+          onClick={() => setShowDonation(false)}
           className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-sm w-full overflow-hidden"
+            className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
           >
-            {/* Header */}
-            <div className="bg-gradient-to-br from-rose-500 to-pink-600 text-white p-6 relative">
+            <div className="bg-gradient-to-br from-rose-500 to-pink-600 text-white p-6 text-center relative">
               <button
-                onClick={() => setCardOpen(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
+                onClick={() => setShowDonation(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/25 hover:bg-white/40 flex items-center justify-center transition text-xl font-bold"
               >
-                <X size={16} />
+                ×
               </button>
-              <div className="text-4xl mb-2">❤️</div>
-              <h3 className="font-black text-lg mb-1">
-                {lang === "uz"
-                  ? "Imkoniyati cheklangan o'quvchi"
-                  : "Ученик с особыми потребностями"}
-              </h3>
-              <p className="text-white/85 text-sm">
-                {lang === "uz"
-                  ? "To'g'ridan-to'g'ri karta raqamiga yordam yuborishingiz mumkin"
-                  : "Вы можете помочь напрямую переводом на карту"}
-              </p>
-            </div>
-
-            {/* Body */}
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                {product.photo ? (
+              <div className="w-28 h-28 rounded-full bg-white/25 mx-auto mb-3 overflow-hidden border-4 border-white/50 shadow-xl">
+                {authorAvatar ? (
                   <img
-                    src={product.photo}
-                    alt={author}
-                    className="w-14 h-14 rounded-xl object-cover"
+                    src={authorAvatar}
+                    alt=""
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-rose-100 flex items-center justify-center text-2xl">
-                    👤
+                  <div className="w-full h-full flex items-center justify-center text-5xl">
+                    ❤️
                   </div>
                 )}
-                <div>
-                  <div className="font-black text-gray-900">{author}</div>
-                  <div className="text-xs text-gray-500">{school}</div>
+              </div>
+              <h3 className="font-black text-2xl mb-1">{authorName}</h3>
+              {authorSchool && (
+                <div className="text-white/85 text-sm">🏫 {authorSchool}</div>
+              )}
+              {authorGrade && (
+                <div className="text-white/80 text-xs mt-1">
+                  📚 {authorGrade}-sinf
                 </div>
+              )}
+            </div>
+
+            <div className="p-6">
+              <div className="bg-rose-50 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-2 text-rose-700 font-bold text-sm mb-2">
+                  <Heart size={14} className="fill-rose-500 text-rose-500" />
+                  {lang === "uz"
+                    ? "Imkoniyati cheklangan o'quvchi"
+                    : "Ученик с особыми возможностями"}
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {lang === "uz"
+                    ? "Siz uning kartasiga to'g'ridan-to'g'ri yordam berishingiz yoki mahsulotini sotib olishingiz mumkin."
+                    : "Вы можете оказать прямую помощь на его карту или купить его товар."}
+                </p>
               </div>
 
-              {product.cardNumber ? (
-                <>
-                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 mb-3">
-                    <div className="text-xs text-gray-500 font-semibold mb-1">
-                      {lang === "uz" ? "Karta raqami" : "Номер карты"}
-                    </div>
-                    <div className="font-mono text-lg font-black text-gray-900 tracking-wider break-all">
-                      {product.cardNumber}
-                    </div>
+              {(product.cardNumber || product.card_number) && (
+                <div className="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200 rounded-2xl p-4 mb-4">
+                  <div className="text-xs font-bold text-rose-600 mb-2 uppercase">
+                    💳{" "}
+                    {lang === "uz"
+                      ? "Yordam karta raqami"
+                      : "Номер карты помощи"}
                   </div>
-
-                  <button
-                    onClick={handleCopy}
-                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black transition ${
-                      copied
-                        ? "bg-green-500 text-white"
-                        : "bg-rose-500 hover:bg-rose-600 text-white"
-                    }`}
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={16} />{" "}
-                        {lang === "uz" ? "Nusxalandi!" : "Скопировано!"}
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={16} />{" "}
-                        {lang === "uz" ? "Nusxalash" : "Копировать"}
-                      </>
-                    )}
-                  </button>
-                </>
-              ) : (
-                <div className="bg-gray-50 rounded-xl p-4 text-center text-gray-500 text-sm">
-                  {lang === "uz"
-                    ? "Karta raqami kiritilmagan"
-                    : "Номер карты не указан"}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 font-mono font-black text-lg text-gray-800 tracking-wider">
+                      {product.cardNumber || product.card_number}
+                    </div>
+                    <button
+                      onClick={copyCard}
+                      className="bg-[#1a56db] hover:bg-[#1341a8] text-white px-3 py-2 rounded-lg text-xs font-bold transition"
+                    >
+                      📋 {lang === "uz" ? "Nusxa" : "Копия"}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <p className="text-xs text-gray-400 text-center mt-4 leading-relaxed">
-                {lang === "uz"
-                  ? "💝 Yordam bolalarning kelajagiga quvonch beradi"
-                  : "💝 Помощь приносит радость будущему детей"}
-              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDonation(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-bold text-sm transition"
+                >
+                  {lang === "uz" ? "Yopish" : "Закрыть"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDonation(false);
+                    navigate(`/product/${product.id}`);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-3 rounded-xl font-black text-sm transition"
+                >
+                  {lang === "uz" ? "To'liq ma'lumot" : "Подробнее"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
