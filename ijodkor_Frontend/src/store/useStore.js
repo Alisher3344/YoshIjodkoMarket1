@@ -313,6 +313,7 @@ const useStore = create((set, get) => ({
     }
   },
   addOrder: async (order) => {
+    const user = get().currentUser;
     return await api.createOrder({
       customer_name: order.name || order.customer_name,
       customer_phone: order.phone || order.customer_phone,
@@ -321,6 +322,9 @@ const useStore = create((set, get) => ({
       payment_method: order.payment || order.payment_method || "cash",
       note: order.note || "",
       total: order.total || 0,
+      buyer_user_id: user?.id || null,
+      buyer_user_name: user?.name || "",
+      buyer_user_phone: user?.phone || user?.username || "",
       items: (order.items || []).map((i) => ({
         product_id: i.id || i.product_id,
         name_uz: i.nameUz || i.name_uz || "",

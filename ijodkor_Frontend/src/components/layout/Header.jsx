@@ -345,10 +345,13 @@ export default function Header() {
           ) : (
             <button
               onClick={() => {
-                navigate("/auth");
-                setMenuOpen(false);
+                if (!adminLoggedIn) {
+                  navigate("/auth");
+                } else {
+                  setCartOpen(true);
+                }
               }}
-              className="text-left px-3 py-2 text-sm text-[#1a56db] font-semibold"
+              className="flex items-center gap-2 bg-[#f97316] hover:bg-[#c2570d] text-white px-3 py-2 rounded-lg transition relative"
             >
               {lang === "uz"
                 ? "Kirish / Ro'yxatdan o'tish"

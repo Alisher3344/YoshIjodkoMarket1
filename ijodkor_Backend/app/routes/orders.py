@@ -28,11 +28,20 @@ async def notify_order_safe(order_id: int):
                 return
 
             lines = [
-                "🛒 <b>YANGI BUYURTMA!</b>",
-                "",
-                f"👤 <b>Mijoz:</b> {order.customer_name}",
-                f"📞 <b>Telefon:</b> {order.customer_phone}",
-            ]
+    "🛒 <b>YANGI BUYURTMA!</b>",
+    "",
+    f"👤 <b>Mijoz:</b> {order.customer_name}",
+    f"📞 <b>Telefon:</b> {order.customer_phone}",
+]
+
+# Login qilgan xaridor ma'lumoti
+            if order.buyer_user_id:
+                lines.append("")
+                lines.append("🔐 <b>Tizimdagi foydalanuvchi:</b>")
+                lines.append(f"   👤 Ism: {order.buyer_user_name}")
+                lines.append(f"   📞 Telefon: <code>{order.buyer_user_phone}</code>")
+                lines.append(f"   🆔 User ID: {order.buyer_user_id}")
+
             if order.customer_address:
                 lines.append(f"📍 <b>Manzil:</b> {order.customer_address}")
             if order.city:

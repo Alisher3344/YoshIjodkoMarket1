@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
 import {
   Plus,
   Edit2,
@@ -90,8 +91,28 @@ export default function CabinetPage() {
       return;
     }
     fetchMyProducts();
-  }, [adminLoggedIn]);
 
+    // Sotilgan mahsulotlarni yuklash va tabrik
+    (async () => {
+      const soldItems = (await api.getMySales) ? await api.getMySales() : [];
+      if (soldItems && soldItems.length > 0) {
+        const lastCount = parseInt(
+          localStorage.getItem("lastSalesCount") || "0"
+        );
+        if (soldItems.length > lastCount) {
+          const newSalesCount = soldItems.length - lastCount;
+          setTimeout(() => {
+            alert(
+              lang === "uz"
+                ? `🎉 Tabriklaymiz! ${newSalesCount} ta mahsulotingiz sotildi!\n\nMijoz bilan bog'lanib kelishing.`
+                : `🎉 Поздравляем! Продано ${newSalesCount} ваших товаров!`
+            );
+            localStorage.setItem("lastSalesCount", String(soldItems.length));
+          }, 1000);
+        }
+      }
+    })();
+  }, [adminLoggedIn]);
   useEffect(() => {
     if (currentUser) {
       setProfile({
@@ -396,20 +417,27 @@ export default function CabinetPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myProducts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition"
-                  >
-                    <div className="aspect-square bg-gray-100">
+                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition relative">
+                    <div className="aspect-square bg-gray-100 relative">
                       {p.image ? (
                         <img
                           src={p.image}
                           alt={p.nameUz}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover ${
+                            p.stock === 0 ? "grayscale opacity-60" : ""
+                          }`}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl">
                           📦
+                        </div>
+                      )}
+                      {/* SOTILDI yorlig'i */}
+                      {p.stock === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="bg-red-500 text-white font-black text-xl px-6 py-2 rounded-xl shadow-2xl transform -rotate-12 border-4 border-white">
+                            ✓ {lang === "uz" ? "SOTILDI" : "ПРОДАНО"}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -421,8 +449,14 @@ export default function CabinetPage() {
                         {p.price.toLocaleString()} so'm
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
-                        {cats[p.category] || p.category} · {p.stock}{" "}
-                        {lang === "uz" ? "dona" : "шт"}
+                        {cats[p.category] || p.category} ·{" "}
+                        {p.stock > 0 ? (
+                          `${p.stock} ${lang === "uz" ? "dona" : "шт"}`
+                        ) : (
+                          <span className="text-green-600 font-bold">
+                            {lang === "uz" ? "💰 Sotildi!" : "💰 Продано!"}
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button

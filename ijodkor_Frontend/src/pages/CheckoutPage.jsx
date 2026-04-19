@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { CheckCircle, ArrowLeft, Copy, X } from "lucide-react";
 import useStore from "../store/useStore";
 
 export default function CheckoutPage() {
-  const { t, lang, cart, cartTotal, clearCart, addOrder, removeFromCart } =
-    useStore();
   const navigate = useNavigate();
+  const {
+    t,
+    lang,
+    adminLoggedIn,
+    cart,
+    cartTotal,
+    addOrder,
+    clearCart,
+    removeFromCart,
+  } = useStore();
+
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copiedCard, setCopiedCard] = useState(null);
@@ -20,11 +29,35 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState({});
 
+  // ⚠️ Login tekshirish
+  useEffect(() => {
+    if (!adminLoggedIn) {
+      alert(
+        lang === "uz"
+          ? "⚠️ Mahsulot sotib olish uchun avvalo ro'yxatdan o'tishingiz kerak!"
+          : "⚠️ Для покупки товара сначала нужно зарегистрироваться!"
+      );
+      navigate("/auth");
+      return;
+    }
+    if (cart.length === 0 && !submitted) {
+      // bo'sh savat bilan shu sahifada qolmasin
+      // navigate("/");
+    }
+  }, [adminLoggedIn, navigate, lang]);
+
+  // Agar login qilmagan bo'lsa — hech narsa ko'rsatmaymiz
+  if (!adminLoggedIn) return null;
+
   const total = cartTotal();
   const formatPrice = (n) => n.toLocaleString("uz-UZ") + " so'm";
 
-  const disabledItems = cart.filter((i) => i.student_type === "disabled");
-  const normalItems = cart.filter((i) => i.student_type !== "disabled");
+  const disabledItems = cart.filter(
+    (i) => i.student_type === "disabled" || i.studentType === "disabled"
+  );
+  const normalItems = cart.filter(
+    (i) => (i.student_type || i.studentType) !== "disabled"
+  );
   const disabledTotal = disabledItems.reduce((s, i) => s + i.price * i.qty, 0);
   const normalTotal = normalItems.reduce((s, i) => s + i.price * i.qty, 0);
 
@@ -120,20 +153,23 @@ export default function CheckoutPage() {
                   <div className="text-rose-600 font-black mb-3">
                     {formatPrice(item.price * item.qty)}
                   </div>
-                  {item.card_number && (
+                  {(item.card_number || item.cardNumber) && (
                     <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5">
                       <span className="flex-1 font-black tracking-widest">
-                        {item.card_number}
+                        {item.card_number || item.cardNumber}
                       </span>
                       <button
-                        onClick={() => copyCard(item.card_number)}
+                        onClick={() =>
+                          copyCard(item.card_number || item.cardNumber)
+                        }
                         className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${
-                          copiedCard === item.card_number
+                          copiedCard === (item.card_number || item.cardNumber)
                             ? "bg-green-500 text-white"
                             : "bg-[#1a56db] text-white"
                         }`}
                       >
-                        {copiedCard === item.card_number ? (
+                        {copiedCard ===
+                        (item.card_number || item.cardNumber) ? (
                           "✓"
                         ) : (
                           <Copy size={12} />
@@ -340,15 +376,21 @@ export default function CheckoutPage() {
               {cart.map((item) => (
                 <div key={item.id} className="flex gap-3 group">
                   <img
-                    src={item.image || "https://via.placeholder.com/50"}
+                    src={
+                      item.image ||
+                      "https://placehold.co/50x50/e2e8f0/64748b?text=%20"
+                    }
                     alt=""
                     className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-700 line-clamp-1">
                       {lang === "uz"
-                        ? item.name_uz
-                        : item.name_ru || item.name_uz}
+                        ? item.nameUz || item.name_uz
+                        : item.nameRu ||
+                          item.name_ru ||
+                          item.nameUz ||
+                          item.name_uz}
                     </p>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-xs text-gray-400">x{item.qty}</span>

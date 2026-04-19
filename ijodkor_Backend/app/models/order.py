@@ -10,12 +10,18 @@ class Order(Base):
     id                = Column(Integer, primary_key=True, index=True)
     customer_name     = Column(String(200), nullable=False)
     customer_phone    = Column(String(50),  nullable=False)
-    customer_address  = Column(Text,         default="")
+    customer_address  = Column(Text,        default="")
     city              = Column(String(100), default="")
     payment_method    = Column(String(50),  default="cash")
-    note              = Column(Text,         default="")
+    note              = Column(Text,        default="")
     total             = Column(Float,       default=0.0)
     status            = Column(String(50),  default="new")
+
+    # Login qilgan xaridor (ixtiyoriy)
+    buyer_user_id     = Column(Integer,     default=None, nullable=True)
+    buyer_user_name   = Column(String(200), default="")
+    buyer_user_phone  = Column(String(50),  default="")
+
     created_at        = Column(DateTime(timezone=True), server_default=func.now())
 
     items             = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -31,7 +37,7 @@ class OrderItem(Base):
     name_ru       = Column(String(500), default="")
     price         = Column(Float,   default=0.0)
     qty           = Column(Integer, default=1)
-    image         = Column(Text,    default="")  # ⚠️ BASE64 uchun Text!
+    image         = Column(Text,    default="")
     author        = Column(String(300), default="")
     school        = Column(String(300), default="")
     card_number   = Column(String(50),  default="")
