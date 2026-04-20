@@ -184,3 +184,18 @@ async def delete_product(
 
     await product_crud.delete(db, product)
     return {"success": True}
+@router.get("/user/{user_id}")
+async def get_products_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
+    """Ma'lum user mahsulotlari — muallif sahifasi uchun"""
+    result = await db.execute(
+        select(Product)
+        .where(Product.user_id == user_id)
+        .where(Product.stock > 0)
+        .order_by(Product.id.desc())
+    )
+    products = result.scalars().all()
+
+    u_res = await db.execute(select(User).where(User.id == user_id))
+    user = u_res.scalar_one_or_none()
+
+    return [product_to_dict(p, user) for p in products]
