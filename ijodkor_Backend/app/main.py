@@ -10,7 +10,7 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Database tayyor")
-    yield
+    yield   
 
 
 app = FastAPI(lifespan=lifespan)
@@ -18,10 +18,11 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+         "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://yoshijodkor.uz",
+    "https://www.yoshijodkor.uz",
+    "*",
     ],
     allow_credentials=True,
     allow_methods=["*"],

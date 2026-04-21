@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const BASE_URL = "https://web-production-c57d3.up.railway.app/api";
 
 let _token = localStorage.getItem("token") || null;
 
@@ -19,7 +19,7 @@ async function request(method, path, data = null) {
   if (_token) headers["Authorization"] = `Bearer ${_token}`;
   const opts = { method, headers };
   if (data) opts.body = JSON.stringify(data);
-  const res = await fetch(`${BASE}${path}`, opts);
+  const res = await fetch(`${BASE_URL}${path}`, opts);
   if (res.status === 204) return null;
   const json = await res.json();
   if (!res.ok)
