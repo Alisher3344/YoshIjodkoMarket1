@@ -613,18 +613,18 @@ export default function CabinetPage() {
               {currentUser.is_disabled && (
                 <>
                   <div>
-                    <label className="text-xs font-bold text-rose-600 mb-1 block">
+                    {/* <label className="text-xs font-bold text-rose-600 mb-1 block">
                       <CreditCard size={12} className="inline mr-1" />
                       {lang === "uz" ? "Karta raqami" : "Номер карты"}
-                    </label>
-                    <input
+                    </label> */}
+                    {/* <input
                       type="text"
                       value={profile.card_number}
                       onChange={(e) =>
                         setProfile({ ...profile, card_number: e.target.value })
                       }
                       className="w-full border-2 border-rose-200 bg-rose-50 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-500 font-mono"
-                    />
+                    /> */}
                   </div>
 
                   <div>

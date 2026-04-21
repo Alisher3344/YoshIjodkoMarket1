@@ -6,7 +6,6 @@ import {
   Lock,
   School,
   Calendar,
-  CreditCard,
   Heart,
   ArrowLeft,
   CheckCircle,
@@ -35,7 +34,6 @@ export default function AuthPage() {
     school: "",
     age: "",
     is_disabled: false,
-    card_number: "",
   });
 
   // ── LOGIN ─────────────────────────────────────────────────────────────
@@ -102,12 +100,6 @@ export default function AuthPage() {
       setError(lang === "uz" ? "Parollar mos kelmadi" : "Пароли не совпадают");
       return;
     }
-    if (regData.is_disabled && !regData.card_number.trim()) {
-      setError(
-        lang === "uz" ? "Karta raqamini kiriting" : "Введите номер карты"
-      );
-      return;
-    }
 
     setLoading(true);
     const res = await register({
@@ -117,7 +109,7 @@ export default function AuthPage() {
       school: regData.school.trim(),
       age: parseInt(regData.age) || 0,
       is_disabled: regData.is_disabled,
-      card_number: regData.card_number.trim(),
+      card_number: "",
     });
     setLoading(false);
 
@@ -420,7 +412,6 @@ export default function AuthPage() {
                     setRegData({
                       ...regData,
                       is_disabled: e.target.checked,
-                      card_number: e.target.checked ? regData.card_number : "",
                     })
                   }
                   className="w-5 h-5 accent-rose-500"
@@ -432,30 +423,6 @@ export default function AuthPage() {
                     : "С ограниченными возможностями"}
                 </span>
               </label>
-
-              {/* Karta raqam — faqat imkoniyati cheklangan bo'lsa */}
-              {regData.is_disabled && (
-                <div className="relative">
-                  <CreditCard
-                    size={18}
-                    className="absolute left-3 top-3 text-rose-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder={
-                      lang === "uz"
-                        ? "Karta raqami (16 raqam)"
-                        : "Номер карты (16 цифр)"
-                    }
-                    value={regData.card_number}
-                    onChange={(e) =>
-                      setRegData({ ...regData, card_number: e.target.value })
-                    }
-                    className="w-full pl-10 pr-3 py-2.5 border-2 border-rose-200 bg-rose-50 rounded-xl outline-none focus:border-rose-500 transition"
-                    required
-                  />
-                </div>
-              )}
 
               <button
                 type="submit"

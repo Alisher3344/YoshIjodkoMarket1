@@ -274,7 +274,7 @@ export default function ProductPage() {
             )}
 
             {/* Imkoniyati cheklangan — karta raqami */}
-            {isDisabled && p.cardNumber && (
+            {/* {isDisabled && p.cardNumber && (
               <div className="bg-white rounded-xl p-3 mt-3 border-2 border-rose-200">
                 <div className="text-xs font-bold text-rose-600 mb-2 uppercase flex items-center gap-1">
                   💳{" "}
@@ -304,7 +304,7 @@ export default function ProductPage() {
                   </button>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
 
           {/* Stock */}

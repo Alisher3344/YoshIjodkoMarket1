@@ -29,6 +29,7 @@ export default function ProductCard({ product }) {
     lang === "uz"
       ? product.region || ""
       : product.regionRu || product.region || "";
+  const illnessInfo = product.illnessInfo || product.illness_info || "";
 
   const name =
     lang === "uz"
@@ -42,29 +43,13 @@ export default function ProductCard({ product }) {
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0;
 
-  const copyCard = (e) => {
-    e.stopPropagation();
-    const card = product.cardNumber || product.card_number || "";
-    if (card) {
-      navigator.clipboard.writeText(card.replace(/\s/g, ""));
-      alert(
-        lang === "uz"
-          ? "✅ Karta raqami nusxalandi!"
-          : "✅ Номер карты скопирован!"
-      );
-    }
-  };
-
   return (
     <>
-      {/* TASHQI konteyner: overflow-visible (avatar chiqib turishi uchun) */}
       <div className="product-card bg-white rounded-2xl border border-gray-100 hover:shadow-xl transition-all group relative flex flex-col">
-        {/* Rasm qismi — overflow-hidden faqat rasm uchun */}
         <div
           onClick={() => navigate(`/product/${product.id}`)}
           className="aspect-square bg-gray-100 relative cursor-pointer rounded-t-2xl"
         >
-          {/* Rasm konteyneri (faqat rasm overflow-hidden) */}
           <div className="absolute inset-0 overflow-hidden rounded-t-2xl">
             {product.image ? (
               <img
@@ -83,7 +68,6 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          {/* TOP-LEFT badges */}
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
             {product.badge === "new" && (
               <span className="bg-green-500 text-white px-3 py-1 rounded-full text-[11px] font-black uppercase shadow-md">
@@ -107,7 +91,6 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          {/* TOP-RIGHT */}
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 items-end">
             {hasDiscount && (
               <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-black shadow-md">
@@ -122,7 +105,6 @@ export default function ProductCard({ product }) {
             </button>
           </div>
 
-          {/* BOTTOM-CENTER: AVATAR — endi rasmning tashqarisida ko'rinadi! */}
           {isDisabled && (
             <button
               onClick={(e) => {
@@ -130,7 +112,7 @@ export default function ProductCard({ product }) {
                 setShowDonation(true);
               }}
               className="absolute left-1/2 -bottom-10 -translate-x-1/2 z-30"
-              title={lang === "uz" ? "Yordam berish" : "Помочь"}
+              title={lang === "uz" ? "Batafsil" : "Подробнее"}
             >
               <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-rose-100 to-pink-100 hover:scale-110 transition-transform">
                 {authorAvatar ? (
@@ -150,7 +132,6 @@ export default function ProductCard({ product }) {
                   </div>
                 )}
               </div>
-              {/* Small heart indicator — alohida konteyner */}
               <div className="absolute -bottom-1 right-0 bg-rose-500 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-md z-40">
                 <Heart size={10} className="fill-white" />
               </div>
@@ -158,13 +139,11 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
-        {/* Ma'lumot */}
         <div
           className={`p-3 flex flex-col flex-1 ${
             isDisabled ? "pt-12" : "pt-3"
           }`}
         >
-          {/* Viloyat, Tuman */}
           {(authorRegion || authorDistrict) && (
             <div className="text-xs text-gray-500 flex items-center gap-1 mb-1">
               <MapPin size={10} className="text-[#1a56db] flex-shrink-0" />
@@ -174,7 +153,6 @@ export default function ProductCard({ product }) {
             </div>
           )}
 
-          {/* Maktab, Sinf */}
           {(authorSchool || authorGrade) && (
             <div className="text-xs text-gray-500 flex items-center gap-1 mb-2">
               <School size={10} className="flex-shrink-0" />
@@ -190,7 +168,6 @@ export default function ProductCard({ product }) {
             </div>
           )}
 
-          {/* Mahsulot nomi */}
           <h3
             onClick={() => navigate(`/product/${product.id}`)}
             className="font-black text-sm text-gray-900 line-clamp-2 mb-2 min-h-[40px] cursor-pointer hover:text-[#1a56db] transition"
@@ -198,7 +175,6 @@ export default function ProductCard({ product }) {
             {name}
           </h3>
 
-          {/* Rating va sold */}
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1">
               <Star size={12} className="fill-yellow-400 text-yellow-400" />
@@ -216,14 +192,12 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          {/* Muallif ismi */}
           {authorName && (
             <div className="text-xs text-gray-600 mb-2 line-clamp-1">
               ✍️ <span className="font-semibold">{authorName}</span>
             </div>
           )}
 
-          {/* Narx */}
           <div className="flex items-baseline gap-2 mb-3 mt-auto">
             <span className="text-[#1a56db] font-black text-base">
               {formatPrice(product.price)}
@@ -235,14 +209,13 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          {/* Tugmalar */}
           <div className="flex flex-col gap-2">
             {isDisabled && (
               <button
                 onClick={() => setShowDonation(true)}
                 className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-2.5 rounded-xl text-sm font-black shadow-md hover:shadow-lg transition"
               >
-                ❤️ {lang === "uz" ? "Imkoniyati cheklangan" : "Помощь"}
+                ❤️ {lang === "uz" ? "Imkoniyati cheklangan" : "Особый"}
               </button>
             )}
             <button
@@ -259,7 +232,7 @@ export default function ProductCard({ product }) {
         </div>
       </div>
 
-      {/* Donation modal */}
+      {/* Modal — FAQAT kasallik haqida ma'lumot */}
       {showDonation && (
         <div
           onClick={() => setShowDonation(false)}
@@ -301,41 +274,24 @@ export default function ProductCard({ product }) {
             </div>
 
             <div className="p-6">
-              <div className="bg-rose-50 rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-2 text-rose-700 font-bold text-sm mb-2">
+              {/* Kasallik haqida ma'lumot */}
+              <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 mb-4">
+                <div className="flex items-center gap-2 text-rose-700 font-bold text-sm mb-3">
                   <Heart size={14} className="fill-rose-500 text-rose-500" />
-                  {lang === "uz"
-                    ? "Imkoniyati cheklangan o'quvchi"
-                    : "Ученик с особыми возможностями"}
+                  {lang === "uz" ? "Kasallik haqida ma'lumot" : "О заболевании"}
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {lang === "uz"
-                    ? "Siz uning kartasiga to'g'ridan-to'g'ri yordam berishingiz yoki mahsulotini sotib olishingiz mumkin."
-                    : "Вы можете оказать прямую помощь на его карту или купить его товар."}
-                </p>
-              </div>
-
-              {(product.cardNumber || product.card_number) && (
-                <div className="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200 rounded-2xl p-4 mb-4">
-                  <div className="text-xs font-bold text-rose-600 mb-2 uppercase">
-                    💳{" "}
+                {illnessInfo ? (
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {illnessInfo}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">
                     {lang === "uz"
-                      ? "Yordam karta raqami"
-                      : "Номер карты помощи"}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 font-mono font-black text-lg text-gray-800 tracking-wider">
-                      {product.cardNumber || product.card_number}
-                    </div>
-                    <button
-                      onClick={copyCard}
-                      className="bg-[#1a56db] hover:bg-[#1341a8] text-white px-3 py-2 rounded-lg text-xs font-bold transition"
-                    >
-                      📋 {lang === "uz" ? "Nusxa" : "Копия"}
-                    </button>
-                  </div>
-                </div>
-              )}
+                      ? "Kasallik haqida ma'lumot yo'q"
+                      : "Нет информации о заболевании"}
+                  </p>
+                )}
+              </div>
 
               <div className="flex gap-2">
                 <button
