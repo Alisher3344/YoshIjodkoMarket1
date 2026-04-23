@@ -10,6 +10,12 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("Database tayyor")
+    print("=== Registered routes ===")
+    for route in app.routes:
+        if hasattr(route, "methods") and hasattr(route, "path"):
+            for m in route.methods:
+                print(f"  {m:7} {route.path}")
+    print("=========================")
     yield
 
 
