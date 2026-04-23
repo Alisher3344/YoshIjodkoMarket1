@@ -28,21 +28,17 @@ export default function ProductPage() {
   // Mahsulot ma'lumotini yuklash
   useEffect(() => {
     setLoading(true);
-    api.request
-      ? api
-          .request("GET", `/products/${id}`)
-          .then((p) => {
-            setProduct(p);
-            setLoading(false);
-          })
-          .catch(() => setLoading(false))
-      : fetch(`http://127.0.0.1:8000/api/products/${id}`)
-          .then((r) => r.json())
-          .then((p) => {
-            setProduct(p);
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
+    api
+      .getProduct(id)
+      .then((p) => {
+        setProduct(p);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("getProduct:", err.message);
+        setProduct(null);
+        setLoading(false);
+      });
 
     window.scrollTo(0, 0);
   }, [id]);
