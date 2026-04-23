@@ -37,7 +37,7 @@ export const api = {
   // Products
   getProducts: (params = {}) => {
     const q = new URLSearchParams(params).toString();
-    return request("GET", `/products${q ? "?" + q : ""}`).then((r) => ({
+    return request("GET", `/products/${q ? "?" + q : ""}`).then((r) => ({
       data: Array.isArray(r) ? r : [],
     }));
   },
@@ -46,32 +46,32 @@ export const api = {
       data: Array.isArray(r) ? r : [],
     })),
   getProduct: (id) => request("GET", `/products/${id}`),
-  createProduct: (data) => request("POST", "/products", data),
+  createProduct: (data) => request("POST", "/products/", data),
   updateProduct: (id, data) => request("PUT", `/products/${id}`, data),
   deleteProduct: (id) => request("DELETE", `/products/${id}`),
 
   // Orders
   getOrders: () =>
-    request("GET", "/orders").then((r) => ({
+    request("GET", "/orders/").then((r) => ({
       data: Array.isArray(r) ? r : [],
     })),
-  createOrder: (data) => request("POST", "/orders", data),
+  createOrder: (data) => request("POST", "/orders/", data),
   updateStatus: (id, status) =>
     request("PUT", `/orders/${id}/status`, { status }),
 
   // Custom orders
   getCustomOrders: () =>
-    request("GET", "/custom-orders").then((r) => ({
+    request("GET", "/custom-orders/").then((r) => ({
       data: Array.isArray(r) ? r : [],
     })),
-  createCustomOrder: (data) => request("POST", "/custom-orders", data),
+  createCustomOrder: (data) => request("POST", "/custom-orders/", data),
   updateCustomStatus: (id, status) =>
     request("PUT", `/custom-orders/${id}/status`, { status }),
 
   // Users (admin)
   getUsers: () =>
-    request("GET", "/users").then((r) => ({ data: Array.isArray(r) ? r : [] })),
-  createUser: (data) => request("POST", "/users", data),
+    request("GET", "/users/").then((r) => ({ data: Array.isArray(r) ? r : [] })),
+  createUser: (data) => request("POST", "/users/", data),
   updateUser: (id, data) => request("PUT", `/users/${id}`, data),
   deleteUser: (id) => request("DELETE", `/users/${id}`),
   toggleUser: (id) => request("PATCH", `/users/${id}/toggle`),
