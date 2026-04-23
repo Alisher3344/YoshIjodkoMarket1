@@ -1,39 +1,8 @@
 import { useState } from "react";
-import {
-  Phone,
-  Mail,
-  MapPin,
-  Send,
-  User,
-  MessageSquare,
-  CheckCircle,
-} from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import useStore from "../store/useStore";
 import { api } from "../services/api";
-
-// ── Helper: telefon maskasi ─────────────────────────────────────────
-function formatPhone(value) {
-  // Faqat raqamlarni qoldirish
-  let digits = value.replace(/\D/g, "");
-
-  // 998 bilan boshlanmasa, qo'shamiz
-  if (!digits.startsWith("998")) {
-    if (digits.startsWith("0")) digits = digits.slice(1);
-    digits = "998" + digits;
-  }
-
-  // Maksimal 12 raqam (998 XX XXX XX XX)
-  digits = digits.slice(0, 12);
-
-  // Formatlash
-  let formatted = "+998";
-  if (digits.length > 3) formatted += " " + digits.slice(3, 5);
-  if (digits.length > 5) formatted += " " + digits.slice(5, 8);
-  if (digits.length > 8) formatted += " " + digits.slice(8, 10);
-  if (digits.length > 10) formatted += " " + digits.slice(10, 12);
-
-  return formatted;
-}
+import { formatPhone } from "../utils/phone";
 
 export function ContactPage() {
   const { lang } = useStore();
@@ -102,241 +71,163 @@ export function ContactPage() {
     }
   };
 
+  const infoItems = [
+    {
+      icon: "📍",
+      labelUz: "Manzil",
+      labelRu: "Адрес",
+      value:
+        lang === "uz"
+          ? "Qashqadaryo viloyati, Qarshi shahri, I.Karimov ko'chasi, 276-uy"
+          : "Кашкадарьинская обл., г. Карши, ул. И.Каримова, 276",
+    },
+    {
+      icon: "📞",
+      labelUz: "Telefon",
+      labelRu: "Телефон",
+      value: "+998 98 777 07 27",
+    },
+    {
+      icon: "✉️",
+      labelUz: "Email",
+      labelRu: "Email",
+      value: "info@yoshijodkor.uz",
+    },
+    {
+      icon: "🤝",
+      labelUz: "Hamkorlik",
+      labelRu: "Партнёрство",
+      value:
+        lang === "uz"
+          ? "Qashqadaryo viloyati Xalq ta'limi boshqarmasi"
+          : "Управление народного образования Кашкадарьинской обл.",
+    },
+    {
+      icon: "🕐",
+      labelUz: "Ish vaqti",
+      labelRu: "Режим работы",
+      value:
+        lang === "uz"
+          ? "09:00 - 22:00 (Dushanba-Yakshanba)"
+          : "09:00 - 22:00 (Пн-Вс)",
+    },
+  ];
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-10 min-h-screen">
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">
-          {lang === "uz" ? "Biz bilan aloqa" : "Связаться с нами"}
+        <div className="text-5xl mb-4">📞</div>
+        <h1 className="text-3xl font-black text-gray-900 mb-2">
+          {lang === "uz" ? "Aloqa" : "Связь"}
         </h1>
-        <p className="text-gray-500">
-          {lang === "uz"
-            ? "Savol yoki takliflaringiz bo'lsa — bizga yozing, tez orada javob beramiz"
-            : "Если у вас есть вопросы или предложения — напишите нам"}
-        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6">
-        {/* ── Kontakt info ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Ma'lumot ro'yxati */}
         <div className="space-y-4">
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-3xl p-6">
-            <h3 className="font-black text-xl mb-5">
-              {lang === "uz" ? "Ma'lumot" : "Информация"}
-            </h3>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <Phone size={16} />
+          {infoItems.map((item, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-start gap-4"
+            >
+              <span className="text-2xl flex-shrink-0">{item.icon}</span>
+              <div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">
+                  {lang === "uz" ? item.labelUz : item.labelRu}
                 </div>
-                <div>
-                  <div className="text-white/70 text-xs uppercase font-bold mb-1">
-                    {lang === "uz" ? "Telefon" : "Телефон"}
-                  </div>
-                  <a
-                    href="tel: +998987770727"
-                    className="font-bold text-base hover:text-white/80"
-                  >
-                    +998 98 777 07 27
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <Mail size={16} />
-                </div>
-                <div>
-                  <div className="text-white/70 text-xs uppercase font-bold mb-1">
-                    Email
-                  </div>
-                  <a
-                    href="mailto:info@yoshijodkor.uz"
-                    className="font-bold text-base hover:text-white/80 break-all"
-                  >
-                    info@yoshijodkor.uz
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <MapPin size={16} />
-                </div>
-                <div>
-                  <div className="text-white/70 text-xs uppercase font-bold mb-1">
-                    {lang === "uz" ? "Manzil" : "Адрес"}
-                  </div>
-                  <div className="font-bold text-sm leading-relaxed">
-                    {lang === "uz"
-                      ? "Qashqadaryo viloyati, Qarshi sh."
-                      : "Кашкадарьинская обл., г. Карши"}
-                  </div>
-                </div>
+                <div className="font-semibold text-gray-800">{item.value}</div>
               </div>
             </div>
-          </div>
-
-          {/* Ish vaqti */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5">
-            <h4 className="font-black text-sm text-gray-800 mb-3">
-              🕐 {lang === "uz" ? "Ish vaqti" : "Режим работы"}
-            </h4>
-            <div className="text-sm text-gray-600 space-y-1">
-              <div className="flex justify-between">
-                <span>{lang === "uz" ? "Dush - Juma" : "Пн - Пт"}:</span>
-                <span className="font-bold">9:00 - 18:00</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{lang === "uz" ? "Shanba" : "Суббота"}:</span>
-                <span className="font-bold">9:00 - 14:00</span>
-              </div>
-              <div className="flex justify-between text-red-500">
-                <span>{lang === "uz" ? "Yakshanba" : "Воскресенье"}:</span>
-                <span className="font-bold">
-                  {lang === "uz" ? "Dam" : "Выходной"}
-                </span>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* ── Forma ─────────────────────────────────────────────── */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8">
+        {/* Forma */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h3 className="font-black text-gray-800 mb-5">
+            {lang === "uz" ? "Xabar yuborish" : "Отправить сообщение"}
+          </h3>
+
           {success ? (
             <div className="text-center py-10">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle size={40} className="text-green-500" />
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={32} className="text-green-500" />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">
+              <h4 className="text-lg font-black text-gray-900 mb-1">
                 {lang === "uz" ? "Xabar yuborildi!" : "Сообщение отправлено!"}
-              </h3>
-              <p className="text-gray-500">
+              </h4>
+              <p className="text-sm text-gray-500">
                 {lang === "uz"
-                  ? "Rahmat! Tez orada siz bilan bog'lanamiz."
-                  : "Спасибо! Мы свяжемся с вами в ближайшее время."}
+                  ? "Rahmat! Tez orada bog'lanamiz."
+                  : "Спасибо! Мы свяжемся с вами."}
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <h3 className="font-black text-xl text-gray-900 mb-4">
-                {lang === "uz" ? "Xabar yuborish" : "Отправить сообщение"}
-              </h3>
-
-              {/* Ism */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  {lang === "uz" ? "Ismingiz" : "Ваше имя"} *
-                </label>
-                <div className="relative">
-                  <User
-                    size={16}
-                    className="absolute left-3 top-3.5 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => {
-                      setForm({ ...form, name: e.target.value });
-                      if (errors.name) setErrors({ ...errors, name: "" });
-                    }}
-                    placeholder={
-                      lang === "uz" ? "Ismingizni kiriting" : "Введите ваше имя"
-                    }
-                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-sm outline-none transition ${
-                      errors.name
-                        ? "border-red-400"
-                        : "border-gray-200 focus:border-[#1a56db]"
-                    }`}
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => {
+                    setForm({ ...form, name: e.target.value });
+                    if (errors.name) setErrors({ ...errors, name: "" });
+                  }}
+                  placeholder={lang === "uz" ? "Ismingiz" : "Ваше имя"}
+                  className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a56db] ${
+                    errors.name ? "border-red-400" : "border-gray-200"
+                  }`}
+                />
                 {errors.name && (
                   <p className="text-red-500 text-xs mt-1">{errors.name}</p>
                 )}
               </div>
 
-              {/* Telefon — MASK */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  {lang === "uz" ? "Telefon raqam" : "Телефон"} *
-                </label>
-                <div className="relative">
-                  <Phone
-                    size={16}
-                    className="absolute left-3 top-3.5 text-gray-400"
-                  />
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={handlePhoneChange}
-                    placeholder="+998 90 000 00 00"
-                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-base outline-none transition font-mono ${
-                      errors.phone
-                        ? "border-red-400"
-                        : "border-gray-200 focus:border-[#1a56db]"
-                    }`}
-                  />
-                </div>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={handlePhoneChange}
+                  placeholder="+998 __ ___ __ __"
+                  className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a56db] ${
+                    errors.phone ? "border-red-400" : "border-gray-200"
+                  }`}
+                />
                 {errors.phone && (
                   <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
                 )}
-                <p className="text-xs text-gray-400 mt-1">
-                  {lang === "uz"
-                    ? "Format: +998 90 000 00 00"
-                    : "Формат: +998 90 000 00 00"}
-                </p>
               </div>
 
-              {/* Xabar */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  {lang === "uz" ? "Xabar matni" : "Сообщение"} *
-                </label>
-                <div className="relative">
-                  <MessageSquare
-                    size={16}
-                    className="absolute left-3 top-3.5 text-gray-400"
-                  />
-                  <textarea
-                    value={form.message}
-                    onChange={(e) => {
-                      setForm({ ...form, message: e.target.value });
-                      if (errors.message) setErrors({ ...errors, message: "" });
-                    }}
-                    rows={5}
-                    placeholder={
-                      lang === "uz"
-                        ? "Savol yoki taklifingizni yozing..."
-                        : "Напишите ваш вопрос или предложение..."
-                    }
-                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-sm outline-none transition resize-none ${
-                      errors.message
-                        ? "border-red-400"
-                        : "border-gray-200 focus:border-[#1a56db]"
-                    }`}
-                  />
-                </div>
+                <textarea
+                  rows={4}
+                  value={form.message}
+                  onChange={(e) => {
+                    setForm({ ...form, message: e.target.value });
+                    if (errors.message) setErrors({ ...errors, message: "" });
+                  }}
+                  placeholder={
+                    lang === "uz" ? "Xabaringiz..." : "Ваше сообщение..."
+                  }
+                  className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a56db] resize-none ${
+                    errors.message ? "border-red-400" : "border-gray-200"
+                  }`}
+                />
                 {errors.message && (
                   <p className="text-red-500 text-xs mt-1">{errors.message}</p>
                 )}
-                <p className="text-xs text-gray-400 mt-1">
-                  {form.message.length} / 500
-                </p>
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#1a56db] to-[#1341a8] hover:from-[#1341a8] hover:to-[#0d2a70] disabled:from-gray-300 disabled:to-gray-400 text-white py-3.5 rounded-xl font-black text-base transition"
+                className="w-full bg-[#1a56db] text-white py-3 rounded-xl font-bold hover:bg-[#1341a8] disabled:bg-gray-300 transition"
               >
-                <Send size={16} />
                 {loading
                   ? lang === "uz"
                     ? "Yuborilmoqda..."
                     : "Отправка..."
                   : lang === "uz"
-                  ? "Xabar yuborish"
-                  : "Отправить сообщение"}
+                  ? "Yuborish"
+                  : "Отправить"}
               </button>
             </form>
           )}
@@ -346,24 +237,96 @@ export function ContactPage() {
   );
 }
 
-// ── About Page (ilgari mavjud bo'lsa qoldiring) ──────────────────────
+// ── About Page ───────────────────────────────────────────────────────
 export function AboutPage() {
   const { lang } = useStore();
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-6">
-        {lang === "uz" ? "Biz haqimizda" : "О нас"}
-      </h1>
-      <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 text-gray-700 leading-relaxed space-y-4">
-        <p>
+    <div className="max-w-4xl mx-auto px-4 py-10 min-h-screen">
+      <div className="text-center mb-12">
+        <div className="text-6xl mb-4">🏫</div>
+        <h1 className="text-3xl font-black text-gray-900 mb-3">
+          {lang === "uz" ? "Biz haqimizda" : "О нас"}
+        </h1>
+        <p className="text-gray-500 max-w-xl mx-auto text-base">
           {lang === "uz"
-            ? "YoshIjodkor Market — Qashqadaryo viloyati o'quvchilarining ijod mahsulotlarini sotish, ayniqsa imkoniyati cheklangan bolalarga yordam berish uchun yaratilgan platforma."
-            : "YoshIjodkor Market — платформа для продажи творческих работ школьников Кашкадарьинской области, особенно для помощи детям с ограниченными возможностями."}
+            ? "Maktab o'quvchilari ijodini qo'llab-quvvatlash va sotiladigan platforma"
+            : "Платформа для поддержки и продажи творческих работ школьников"}
         </p>
-        <p>
+      </div>
+
+      {/* Asosiy matn */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
+        <h2 className="text-xl font-black text-[#1a56db] mb-5">
           {lang === "uz"
-            ? "Bizning maqsadimiz — har bir bolaning ijodini qadrlash va uni butun jamiyatga ko'rsatish. Siz mahsulot sotib olishingiz, yoki to'g'ridan-to'g'ri bolalarga yordam berishingiz mumkin."
-            : "Наша цель — ценить творчество каждого ребёнка и показывать его всему обществу."}
+            ? "Yosh ijodkorlar uchun platforma"
+            : "Платформа для юных творцов"}
+        </h2>
+        <div className="space-y-4 text-gray-700 leading-relaxed">
+          <p>
+            {lang === "uz"
+              ? "Ushbu platforma nafaqat zamonaviy raqamli yechimlarni taqdim etadi, balki eng avvalo o'quvchilarning ijodiy salohiyatini rivojlantirish va ularni qo'llab-quvvatlashga xizmat qiladi."
+              : "Данная платформа не только предлагает современные цифровые решения, но прежде всего служит развитию творческого потенциала учеников и их поддержке."}
+          </p>
+          <p>
+            {lang === "uz"
+              ? "Ushbu platforma orqali maktab o'quvchilari o'z ijod mahsulotlarini — rasmlar, qo'l mehnati buyumlari, tikuv ishlari va boshqa noyob ishlanmalarni namoyish etish, sotish va keng jamoatchilikka taqdim etish imkoniyatiga ega bo'ladi."
+              : "Через эту платформу школьники могут демонстрировать, продавать и представлять широкой общественности свои творческие работы — картины, изделия ручной работы, швейные работы и другие уникальные изделия."}
+          </p>
+          <p>
+            {lang === "uz"
+              ? "Platformamiz yosh ijodkorlarni rag'batlantirish, ularning iste'dodini yuzaga chiqarish va kelajakda mustahkam poydevor yaratishga qaratilgan."
+              : "Наша платформа направлена на поощрение юных творцов, раскрытие их таланта и создание прочного фундамента для будущего."}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {[
+          {
+            emoji: "🎨",
+            titleUz: "O'quvchilar ijodi",
+            titleRu: "Творчество учеников",
+            descUz: "Maktab o'quvchilari tomonidan yaratilgan noyob san'at asarlari",
+            descRu: "Уникальные произведения искусства, созданные школьниками",
+          },
+          {
+            emoji: "💰",
+            titleUz: "Qo'shimcha daromad",
+            titleRu: "Дополнительный доход",
+            descUz: "Har bir sotuvdan maktab va o'quvchiga daromad",
+            descRu: "Доход для школы и ученика с каждой продажи",
+          },
+          {
+            emoji: "🌟",
+            titleUz: "Tarbiyaviy maqsad",
+            titleRu: "Воспитательная цель",
+            descUz: "Bolalarni mehnat va tadbirkorlikka o'rgatish",
+            descRu: "Обучение детей труду и предпринимательству",
+          },
+        ].map((item, i) => (
+          <div
+            key={i}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center"
+          >
+            <div className="text-4xl mb-3">{item.emoji}</div>
+            <h3 className="font-black text-gray-800 mb-2">
+              {lang === "uz" ? item.titleUz : item.titleRu}
+            </h3>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              {lang === "uz" ? item.descUz : item.descRu}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-8 text-white text-center">
+        <h2 className="text-2xl font-black mb-3">
+          {lang === "uz" ? "Bizning missiyamiz" : "Наша миссия"}
+        </h2>
+        <p className="text-white/80 max-w-2xl mx-auto leading-relaxed">
+          {lang === "uz"
+            ? "Yoshijodkor.uz — Qashqadaryo viloyati maktab o'quvchilari ijodini butun O'zbekistonga taqdim etuvchi raqamli platforma. Biz o'quvchilarni rag'batlantirish, ularning ijodiy qobiliyatlarini rivojlantirish va ota-onalarga sifatli, qo'lda yasalgan mahsulotlar taqdim etish uchun yaratilganmiz."
+            : "Yoshijodkor.uz — цифровая платформа, представляющая творчество школьников Кашкадарьинской области всему Узбекистану. Мы созданы для поощрения учеников, развития их творческих способностей и предоставления родителям качественных handmade товаров."}
         </p>
       </div>
     </div>

@@ -269,7 +269,7 @@ export default function Header() {
                         {currentUser?.phone || currentUser?.username}
                       </div>
                     </div>
-                    {isAdmin ? (
+                    {isAdmin && (
                       <button
                         onClick={() => {
                           navigate("/admin");
@@ -278,16 +278,6 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-[#1a56db] transition font-medium flex items-center gap-2"
                       >
                         ⚙️ {lang === "uz" ? "Admin panel" : "Админ панель"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          navigate("/cabinet");
-                          setUserOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-[#1a56db] transition font-medium flex items-center gap-2"
-                      >
-                        🎓 {lang === "uz" ? "Mening kabinetim" : "Мой кабинет"}
                       </button>
                     )}
                     <button
@@ -539,19 +529,17 @@ export default function Header() {
             {/* Account actions */}
             {adminLoggedIn && (
               <div className="p-3 border-t border-gray-100 mt-auto">
-                <button
-                  onClick={() => {
-                    navigate(isAdmin ? "/admin" : "/cabinet");
-                    setMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-[#1a56db] bg-blue-50 hover:bg-blue-100 transition mb-2"
-                >
-                  {isAdmin ? (
-                    <>⚙️ {lang === "uz" ? "Admin panel" : "Админ панель"}</>
-                  ) : (
-                    <>🎓 {lang === "uz" ? "Mening kabinetim" : "Мой кабинет"}</>
-                  )}
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      navigate("/admin");
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-[#1a56db] bg-blue-50 hover:bg-blue-100 transition mb-2"
+                  >
+                    ⚙️ {lang === "uz" ? "Admin panel" : "Админ панель"}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     adminLogout();

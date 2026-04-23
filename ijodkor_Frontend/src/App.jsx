@@ -12,7 +12,7 @@ import CustomOrderPage from "./pages/CustomOrderPage";
 import AuthPage from "./pages/AuthPage";
 import CabinetPage from "./pages/CabinetPage";
 import { AboutPage, ContactPage } from "./pages/StaticPages";
-
+import DashboardPage from "./pages/DashboardPage";
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -96,6 +96,7 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/cabinet" element={<CabinetPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
       </Routes>
     </HashRouter>
   );

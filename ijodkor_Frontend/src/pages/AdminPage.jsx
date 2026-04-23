@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { categoryLabels } from "../components/ui/data/translations";
 import {
   LayoutDashboard,
@@ -12,10 +13,14 @@ import {
   X,
   Check,
   Users,
+  UserCheck,
   Eye,
   EyeOff,
+  Search,
+  KeyRound,
 } from "lucide-react";
 import useStore from "../store/useStore";
+import { formatPhone } from "../utils/phone";
 
 const EMPTY_FORM = {
   name_uz: "",
@@ -45,6 +50,7 @@ const EMPTY_FORM = {
 };
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const {
     t,
     lang,
@@ -79,20 +85,37 @@ export default function AdminPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showUserForm, setShowUserForm] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [pwdResetUser, setPwdResetUser] = useState(null);
+  const [pwdValue, setPwdValue] = useState("");
+  const [pwdShow, setPwdShow] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
   const [userForm, setUserForm] = useState({
     name: "",
+    full_name: "",
     username: "",
     password: "",
-    email: "",
+    phone: "",
+    school: "",
     role: "admin",
   });
 
+  // ── Rol tekshiruvi + ma'lumotlarni yuklash ───────────────────────────────
   useEffect(() => {
     if (adminLoggedIn) {
-      fetchProducts();
-      fetchOrders();
-      fetchCustomOrders();
-      fetchUsers();
+      const currentUser = useStore.getState().currentUser;
+      // Agar oddiy admin bo'lsa — /dashboard ga yo'naltirish
+      if (currentUser?.role === "admin") {
+        navigate("/dashboard");
+        return;
+      }
+      // SuperAdmin uchun — ma'lumotlarni yuklash
+      if (currentUser?.role === "superadmin") {
+        fetchProducts();
+        fetchOrders();
+        fetchCustomOrders();
+        fetchUsers();
+      }
     }
   }, [adminLoggedIn]);
 
@@ -103,6 +126,22 @@ export default function AdminPage() {
     if (!ok) {
       setLoginErr(true);
       setTimeout(() => setLoginErr(false), 2000);
+      return;
+    }
+
+    // Rol tekshiruvi
+    const currentUser = useStore.getState().currentUser;
+    if (currentUser?.role === "admin") {
+      navigate("/dashboard");
+    } else if (currentUser?.role === "superadmin") {
+      // Shu sahifada qolamiz
+    } else {
+      alert(
+        lang === "uz"
+          ? "Bu sahifa faqat SuperAdmin uchun!"
+          : "Эта страница только для SuperAdmin!"
+      );
+      adminLogout();
     }
   };
 
@@ -156,9 +195,11 @@ export default function AdminPage() {
       setEditUserId(null);
       setUserForm({
         name: "",
+        full_name: "",
         username: "",
         password: "",
-        email: "",
+        phone: "",
+        school: "",
         role: "admin",
       });
     } catch (err) {
@@ -288,8 +329,26 @@ export default function AdminPage() {
     {
       key: "users",
       icon: <Users size={18} />,
-      label: lang === "uz" ? "Foydalanuvchilar" : "Пользователи",
+      label: lang === "uz" ? "Adminlar" : "Администраторы",
     },
+    {
+      key: "customers",
+      icon: <UserCheck size={18} />,
+      label: lang === "uz" ? "Mijozlar" : "Клиенты",
+    },
+  ];
+
+  // categories - local definition (agar kerak bo'lsa, translations'dan olasiz)
+  const categories = [
+    { id: "paintings", icon: "🎨", label_uz: "Rasmlar", label_ru: "Картины" },
+    {
+      id: "crafts",
+      icon: "🪡",
+      label_uz: "Hunarmandchilik",
+      label_ru: "Ремёсла",
+    },
+    { id: "books", icon: "📚", label_uz: "Kitoblar", label_ru: "Книги" },
+    { id: "other", icon: "🎁", label_uz: "Boshqa", label_ru: "Другое" },
   ];
 
   // ── Dashboard ────────────────────────────────────────────────────────────
@@ -694,15 +753,17 @@ export default function AdminPage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-black text-gray-900">
-                {lang === "uz" ? "Foydalanuvchilar" : "Пользователи"}
+                {lang === "uz" ? "Adminlar" : "Администраторы"}
               </h1>
               <button
                 onClick={() => {
                   setUserForm({
                     name: "",
+                    full_name: "",
                     username: "",
                     password: "",
-                    email: "",
+                    phone: "",
+                    school: "",
                     role: "admin",
                   });
                   setEditUserId(null);
@@ -715,16 +776,23 @@ export default function AdminPage() {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              {users.length === 0 ? (
-                <div className="text-center py-20 text-gray-400">
-                  <div className="text-5xl mb-4">👥</div>
-                  <p>
-                    {lang === "uz"
-                      ? "Foydalanuvchilar yo'q"
-                      : "Нет пользователей"}
-                  </p>
-                </div>
-              ) : (
+              {(() => {
+                const adminList = users.filter(
+                  (u) => u.role === "admin" || u.role === "superadmin"
+                );
+                if (adminList.length === 0) {
+                  return (
+                    <div className="text-center py-20 text-gray-400">
+                      <div className="text-5xl mb-4">👥</div>
+                      <p>
+                        {lang === "uz"
+                          ? "Adminlar yo'q"
+                          : "Нет администраторов"}
+                      </p>
+                    </div>
+                  );
+                }
+                return (
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b">
                     <tr>
@@ -744,7 +812,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map((u) => (
+                    {adminList.map((u) => (
                       <tr key={u.id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3 font-semibold text-sm">
                           {u.name}
@@ -780,8 +848,10 @@ export default function AdminPage() {
                               onClick={() => {
                                 setUserForm({
                                   name: u.name,
+                                  full_name: u.full_name || "",
                                   username: u.username,
-                                  email: u.email || "",
+                                  phone: u.phone || "",
+                                  school: u.school || "",
                                   role: u.role,
                                   password: "",
                                 });
@@ -814,11 +884,310 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
-              )}
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {tab === "customers" && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <h1 className="text-2xl font-black text-gray-900">
+                {lang === "uz" ? "Mijozlar" : "Клиенты"}
+              </h1>
+              <div className="text-sm text-gray-500">
+                {lang === "uz" ? "Jami" : "Всего"}:{" "}
+                <span className="font-bold text-[#1a56db]">
+                  {users.filter((u) => u.role === "user").length}
+                </span>
+              </div>
+            </div>
+
+            {/* Qidiruv */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-4">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-3 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Ism yoki telefon raqam bo'yicha qidirish..."
+                      : "Поиск по имени или телефону..."
+                  }
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db]"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              {(() => {
+                const q = customerSearch.trim().toLowerCase();
+                const qDigits = q.replace(/\D/g, "");
+                const customers = users
+                  .filter((u) => u.role === "user")
+                  .filter((u) => {
+                    if (!q) return true;
+                    const name = (u.name || "").toLowerCase();
+                    const fullName = (u.full_name || "").toLowerCase();
+                    const phoneDigits = (u.phone || u.username || "").replace(
+                      /\D/g,
+                      ""
+                    );
+                    const matchesName =
+                      name.includes(q) || fullName.includes(q);
+                    const matchesPhone =
+                      qDigits.length > 0 && phoneDigits.includes(qDigits);
+                    return matchesName || matchesPhone;
+                  });
+
+                if (customers.length === 0) {
+                  return (
+                    <div className="text-center py-20 text-gray-400">
+                      <div className="text-5xl mb-4">👤</div>
+                      <p>
+                        {q
+                          ? lang === "uz"
+                            ? "Hech narsa topilmadi"
+                            : "Ничего не найдено"
+                          : lang === "uz"
+                          ? "Mijozlar yo'q"
+                          : "Нет клиентов"}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                          {lang === "uz" ? "Ism" : "Имя"}
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                          {lang === "uz" ? "Telefon" : "Телефон"}
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">
+                          {lang === "uz" ? "Holat" : "Статус"}
+                        </th>
+                        <th className="px-4 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {customers.map((u) => (
+                        <tr key={u.id} className="hover:bg-gray-50 transition">
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-sm text-gray-900">
+                              {[u.name, u.full_name].filter(Boolean).join(" ") ||
+                                "-"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                            {u.phone || `+${u.username}`}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                u.active
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {u.active
+                                ? lang === "uz"
+                                  ? "Faol"
+                                  : "Активен"
+                                : lang === "uz"
+                                ? "Bloklangan"
+                                : "Заблокирован"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() => {
+                                  setPwdResetUser(u);
+                                  setPwdValue("");
+                                  setPwdShow(false);
+                                }}
+                                className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-500 transition"
+                                title={
+                                  lang === "uz"
+                                    ? "Parolni o'zgartirish"
+                                    : "Изменить пароль"
+                                }
+                              >
+                                <KeyRound size={15} />
+                              </button>
+                              <button
+                                onClick={() => toggleUserStatus(u.id)}
+                                className="p-2 rounded-lg hover:bg-yellow-50 text-yellow-500 transition"
+                                title={
+                                  u.active
+                                    ? lang === "uz"
+                                      ? "Bloklash"
+                                      : "Заблокировать"
+                                    : lang === "uz"
+                                    ? "Aktivlashtirish"
+                                    : "Активировать"
+                                }
+                              >
+                                {u.active ? (
+                                  <EyeOff size={15} />
+                                ) : (
+                                  <Eye size={15} />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      lang === "uz"
+                                        ? "Bu mijozni o'chirishga ishonchingiz komilmi?"
+                                        : "Удалить этого клиента?"
+                                    )
+                                  ) {
+                                    deleteUser(u.id);
+                                  }
+                                }}
+                                className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
             </div>
           </div>
         )}
       </main>
+
+      {/* ── PAROLNI O'ZGARTIRISH (Modal) ── */}
+      {pwdResetUser && (
+        <div
+          onClick={() => !pwdLoading && setPwdResetUser(null)}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <KeyRound size={18} />
+                </div>
+                <h2 className="font-black text-lg">
+                  {lang === "uz" ? "Parolni o'zgartirish" : "Изменить пароль"}
+                </h2>
+              </div>
+              <button
+                onClick={() => !pwdLoading && setPwdResetUser(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-xl p-3 text-sm">
+                <div className="text-xs text-gray-400 font-bold uppercase mb-1">
+                  {lang === "uz" ? "Mijoz" : "Клиент"}
+                </div>
+                <div className="font-semibold text-gray-800">
+                  {[pwdResetUser.name, pwdResetUser.full_name]
+                    .filter(Boolean)
+                    .join(" ") || "-"}
+                </div>
+                <div className="text-xs text-gray-500 font-mono mt-0.5">
+                  {pwdResetUser.phone || `+${pwdResetUser.username}`}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Yangi parol *" : "Новый пароль *"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={pwdShow ? "text" : "password"}
+                    value={pwdValue}
+                    onChange={(e) => setPwdValue(e.target.value)}
+                    placeholder={
+                      lang === "uz" ? "Kamida 6 ta belgi" : "Минимум 6 символов"
+                    }
+                    minLength={6}
+                    autoFocus
+                    className="w-full pr-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPwdShow((v) => !v)}
+                    className="absolute right-2 top-2 p-1.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {pwdShow ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {lang === "uz"
+                    ? "Mijozga yangi parolni o'zingiz xabar bering."
+                    : "Сообщите клиенту новый пароль самостоятельно."}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t">
+              <button
+                disabled={pwdLoading}
+                onClick={() => setPwdResetUser(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition text-sm disabled:opacity-50"
+              >
+                {lang === "uz" ? "Bekor" : "Отмена"}
+              </button>
+              <button
+                disabled={pwdLoading || pwdValue.length < 6}
+                onClick={async () => {
+                  setPwdLoading(true);
+                  try {
+                    await editUser(pwdResetUser.id, { password: pwdValue });
+                    setPwdResetUser(null);
+                    setPwdValue("");
+                    alert(
+                      lang === "uz"
+                        ? "✅ Parol o'zgartirildi"
+                        : "✅ Пароль изменён"
+                    );
+                  } catch (err) {
+                    alert(err.message || "Xatolik");
+                  } finally {
+                    setPwdLoading(false);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#1a56db] hover:bg-[#1341a8] disabled:bg-gray-300 text-white font-bold transition text-sm"
+              >
+                {pwdLoading
+                  ? lang === "uz"
+                    ? "Saqlanmoqda..."
+                    : "Сохранение..."
+                  : lang === "uz"
+                  ? "Saqlash"
+                  : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MAHSULOT FORMASI (Modal) ── */}
       {showForm && (
@@ -1041,15 +1410,39 @@ export default function AdminPage() {
                   label: lang === "uz" ? "Ism *" : "Имя *",
                   type: "text",
                 },
-                { key: "username", label: "Username *", type: "text" },
-                { key: "email", label: "Email", type: "email" },
                 {
-                  key: "password",
+                  key: "full_name",
+                  label: lang === "uz" ? "Familiya" : "Фамилия",
+                  type: "text",
+                },
+                {
+                  key: "username",
                   label:
                     lang === "uz"
+                      ? "Telefon / Username *"
+                      : "Телефон / Username *",
+                  type: "text",
+                },
+                {
+                  key: "phone",
+                  label: lang === "uz" ? "Telefon raqam" : "Номер телефона",
+                  type: "tel",
+                },
+                {
+                  key: "school",
+                  label: lang === "uz" ? "Qaysi maktabdan" : "Школа",
+                  type: "text",
+                },
+                {
+                  key: "password",
+                  label: editUserId
+                    ? lang === "uz"
                       ? "Parol (o'zgartirish uchun)"
-                      : "Пароль (для изменения)",
-                  type: "password",
+                      : "Пароль (для изменения)"
+                    : lang === "uz"
+                    ? "Parol *"
+                    : "Пароль *",
+                  type: "text",
                 },
               ].map((field) => (
                 <div key={field.key}>
@@ -1058,11 +1451,23 @@ export default function AdminPage() {
                   </label>
                   <input
                     type={field.type}
+                    inputMode={field.key === "phone" ? "numeric" : undefined}
                     value={userForm[field.key] || ""}
-                    onChange={(e) =>
-                      setUserForm({ ...userForm, [field.key]: e.target.value })
-                    }
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const value =
+                        field.key === "phone" ? formatPhone(raw) : raw;
+                      setUserForm({
+                        ...userForm,
+                        [field.key]: value,
+                        ...(field.key === "username" && !userForm.phone
+                          ? { phone: raw }
+                          : {}),
+                      });
+                    }}
+                    className={`w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] ${
+                      field.key === "phone" ? "font-mono" : ""
+                    }`}
                   />
                 </div>
               ))}
@@ -1077,8 +1482,6 @@ export default function AdminPage() {
                   }
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
                 >
-                  <option value="viewer">viewer</option>
-                  <option value="moderator">moderator</option>
                   <option value="admin">admin</option>
                   <option value="superadmin">superadmin</option>
                 </select>

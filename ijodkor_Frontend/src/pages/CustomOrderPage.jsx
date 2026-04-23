@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
+import { formatPhone } from "../utils/phone";
 
 const TYPES_UZ = [
   { key: "painting", icon: "🎨", label: "Rasm / Portret" },
@@ -288,9 +289,12 @@ export default function CustomOrderPage() {
                 </label>
                 <input
                   type="tel"
+                  inputMode="numeric"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full border-2 border-gray-200 focus:border-[#1a56db] rounded-xl px-4 py-3 text-sm outline-none transition"
+                  onChange={(e) =>
+                    setForm({ ...form, phone: formatPhone(e.target.value) })
+                  }
+                  className="w-full border-2 border-gray-200 focus:border-[#1a56db] rounded-xl px-4 py-3 text-sm outline-none transition font-mono"
                   placeholder="+998 __ ___ __ __"
                 />
               </div>

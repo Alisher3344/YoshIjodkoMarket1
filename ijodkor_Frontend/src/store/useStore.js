@@ -10,41 +10,6 @@ export const ROLES = {
     color: "bg-blue-100 text-blue-700",
     icon: "🎓",
   },
-  school: {
-    key: "school",
-    labelUz: "Maktab",
-    labelRu: "Школа",
-    color: "bg-green-100 text-green-700",
-    icon: "🏫",
-  },
-  parent: {
-    key: "parent",
-    labelUz: "Ota-ona",
-    labelRu: "Родитель",
-    color: "bg-yellow-100 text-yellow-700",
-    icon: "👪",
-  },
-  district: {
-    key: "district",
-    labelUz: "Hudud bo'yicha mas'ul",
-    labelRu: "Ответственный района",
-    color: "bg-orange-100 text-orange-700",
-    icon: "📍",
-  },
-  region: {
-    key: "region",
-    labelUz: "Viloyat bo'yicha mas'ul",
-    labelRu: "Ответственный области",
-    color: "bg-purple-100 text-purple-700",
-    icon: "🗺️",
-  },
-  republic: {
-    key: "republic",
-    labelUz: "Respublika bo'yicha mas'ul",
-    labelRu: "Ответственный республики",
-    color: "bg-red-100 text-red-700",
-    icon: "🇺🇿",
-  },
   admin: {
     key: "admin",
     labelUz: "Admin",
@@ -52,9 +17,15 @@ export const ROLES = {
     color: "bg-gray-800 text-white",
     icon: "⚙️",
   },
+  superadmin: {
+    key: "superadmin",
+    labelUz: "Super Admin",
+    labelRu: "Супер Админ",
+    color: "bg-red-600 text-white",
+    icon: "👑",
+  },
 };
 
-// Backend (snake_case) → frontend (camelCase)
 function norm(p) {
   return {
     ...p,
@@ -71,14 +42,12 @@ function norm(p) {
     cardNumber: p.card_number || p.cardNumber || "",
     storyUz: p.story_uz || p.storyUz || "",
     storyRu: p.story_ru || p.storyRu || "",
-    // Avtor profil ma'lumotlari (backenddan join bilan kelishi mumkin)
     authorAvatar: p.author_avatar || p.authorAvatar || "",
     illnessInfo: p.illness_info || p.illnessInfo || "",
     fullName: p.full_name || p.fullName || "",
   };
 }
 
-// Frontend (camelCase) → backend (snake_case)
 function toBackend(d) {
   return {
     name_uz: d.nameUz || d.name_uz || "",
@@ -113,7 +82,6 @@ function toBackend(d) {
 }
 
 const useStore = create((set, get) => ({
-  // ── Til ──────────────────────────────────────────────────────────────
   lang: localStorage.getItem("lang") || "uz",
   setLang: (lang) => {
     localStorage.setItem("lang", lang);
@@ -124,7 +92,6 @@ const useStore = create((set, get) => ({
     return translations[lang]?.[key] || key;
   },
 
-  // ── Savat ─────────────────────────────────────────────────────────────
   cart: JSON.parse(localStorage.getItem("cart") || "[]"),
   addToCart: (product) => {
     const cart = get().cart;
@@ -166,7 +133,6 @@ const useStore = create((set, get) => ({
     get().cart.reduce((sum, item) => sum + item.price * item.qty, 0),
   cartCount: () => get().cart.reduce((sum, item) => sum + item.qty, 0),
 
-  // ── UI ────────────────────────────────────────────────────────────────
   cartOpen: false,
   setCartOpen: (v) => set({ cartOpen: v }),
   menuOpen: false,
@@ -177,7 +143,7 @@ const useStore = create((set, get) => ({
   setSelectedCategory: (v) => set({ selectedCategory: v }),
   sortBy: "newest",
   setSortBy: (v) => set({ sortBy: v }),
-  // ── Dark mode ─────────────────────────────────────────────────────────
+
   darkMode: localStorage.getItem("darkMode") === "true",
   toggleDarkMode: () => {
     const next = !get().darkMode;
@@ -185,11 +151,10 @@ const useStore = create((set, get) => ({
     document.documentElement.classList.toggle("dark", next);
     set({ darkMode: next });
   },
-  // ── Auth ──────────────────────────────────────────────────────────────
+
   adminLoggedIn: !!localStorage.getItem("token"),
   currentUser: JSON.parse(localStorage.getItem("currentUser") || "null"),
 
-  // Kirish (telefon raqami + parol)
   adminLogin: async (username, password) => {
     try {
       const res = await api.login(username, password);
@@ -204,20 +169,20 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // Ro'yxatdan o'tish
-  register: async (data) => {
+  register: async ({ name, full_name, phone, password }) => {
     try {
-      const res = await api.register(data);
+      const res = await api.register({ name, full_name, phone, password });
       const token = res.token || res.access_token;
-      if (!token) return { success: false, error: "Token kelmadi" };
+      if (!token) return { ok: false, error: "Token kelmadi" };
       setToken(token);
       localStorage.setItem("currentUser", JSON.stringify(res.user));
       set({ adminLoggedIn: true, currentUser: res.user });
-      return { success: true, user: res.user };
+      return { ok: true, user: res.user };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { ok: false, error: err.message };
     }
   },
+
   updateProfile: async (data) => {
     try {
       const res = await api.updateProfile(data);
@@ -232,27 +197,16 @@ const useStore = create((set, get) => ({
   adminLogout: () => {
     clearToken();
     localStorage.removeItem("currentUser");
-    set({ adminLoggedIn: false, currentUser: null, myProducts: [] });
+    set({
+      adminLoggedIn: false,
+      currentUser: null,
+      myProducts: [],
+      myStudents: [],
+      studentProducts: [],
+      selectedStudent: null,
+    });
   },
 
-  changeAdminPassword: async (oldPass, newPass) => {
-    try {
-      const user = get().currentUser;
-      await api.login(user.username, oldPass);
-      await api.updateUser(user.id, {
-        name: user.name,
-        username: user.username,
-        email: user.email || "",
-        role: user.role,
-        password: newPass,
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  },
-
-  // ── Mahsulotlar ───────────────────────────────────────────────────────
   products: [],
   customProducts: [],
   productsLoading: false,
@@ -286,7 +240,6 @@ const useStore = create((set, get) => ({
     set({ myProducts: get().myProducts.filter((p) => p.id !== id) });
   },
 
-  // ── O'z mahsulotlari (kabinet) ────────────────────────────────────────
   myProducts: [],
   fetchMyProducts: async () => {
     try {
@@ -298,7 +251,6 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // ── Buyurtmalar ───────────────────────────────────────────────────────
   orders: [],
   ordersLoading: false,
   fetchOrders: async () => {
@@ -344,7 +296,6 @@ const useStore = create((set, get) => ({
     await get().fetchOrders();
   },
 
-  // ── Maxsus buyurtmalar ────────────────────────────────────────────────
   customOrders: [],
   fetchCustomOrders: async () => {
     try {
@@ -367,7 +318,6 @@ const useStore = create((set, get) => ({
     });
   },
 
-  // ── Foydalanuvchilar (admin) ──────────────────────────────────────────
   users: [],
   fetchUsers: async () => {
     try {
@@ -392,6 +342,69 @@ const useStore = create((set, get) => ({
   toggleUserStatus: async (id) => {
     await api.toggleUser(id);
     await get().fetchUsers();
+  },
+
+  myStudents: [],
+  studentProducts: [],
+  selectedStudent: null,
+
+  fetchMyStudents: async () => {
+    try {
+      const res = await api.getMyStudents();
+      set({ myStudents: res.data || [] });
+    } catch (err) {
+      console.error("fetchMyStudents:", err.message);
+      set({ myStudents: [] });
+    }
+  },
+
+  addStudent: async (data) => {
+    await api.createStudent(data);
+    await get().fetchMyStudents();
+  },
+
+  editStudent: async (id, data) => {
+    await api.updateStudent(id, data);
+    await get().fetchMyStudents();
+  },
+
+  removeStudent: async (id) => {
+    await api.deleteStudent(id);
+    await get().fetchMyStudents();
+  },
+
+  toggleStudentActive: async (id) => {
+    await api.toggleStudent(id);
+    await get().fetchMyStudents();
+  },
+
+  setSelectedStudent: (student) => set({ selectedStudent: student }),
+
+  fetchStudentProducts: async (studentId) => {
+    try {
+      const products = await api.getStudentProducts(studentId);
+      set({ studentProducts: (products || []).map(norm) });
+    } catch (err) {
+      console.error("fetchStudentProducts:", err.message);
+      set({ studentProducts: [] });
+    }
+  },
+
+  addProductForStudent: async (studentId, data) => {
+    const payload = { ...toBackend(data), student_id: studentId };
+    await api.createProduct(payload);
+    await get().fetchStudentProducts(studentId);
+  },
+
+  editProductForStudent: async (productId, studentId, data) => {
+    const payload = { ...toBackend(data), student_id: studentId };
+    await api.updateProduct(productId, payload);
+    await get().fetchStudentProducts(studentId);
+  },
+
+  deleteProductForStudent: async (productId, studentId) => {
+    await api.deleteProduct(productId);
+    await get().fetchStudentProducts(studentId);
   },
 }));
 

@@ -1,150 +1,124 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  User,
-  Phone,
-  Lock,
-  School,
-  Calendar,
-  Heart,
-  ArrowLeft,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { User, Lock, ArrowLeft, AlertCircle, Phone } from "lucide-react";
 import useStore from "../store/useStore";
+import { formatPhone, isValidPhone } from "../utils/phone";
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const { lang, adminLogin, register } = useStore();
 
-  const [mode, setMode] = useState("login"); // 'login' | 'register'
+  const [tab, setTab] = useState("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  // Login form
-  const [loginData, setLoginData] = useState({ phone: "", password: "" });
-
-  // Register form
+  const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [regData, setRegData] = useState({
     name: "",
-    phone: "",
+    full_name: "",
+    phone: "+998 ",
     password: "",
-    confirmPassword: "",
-    school: "",
-    age: "",
-    is_disabled: false,
   });
 
-  // ── LOGIN ─────────────────────────────────────────────────────────────
+  const goAfterAuth = () => {
+    const { currentUser } = useStore.getState();
+    if (currentUser?.role === "superadmin" || currentUser?.role === "admin") {
+      navigate("/admin");
+    } else {
+      // Oddiy foydalanuvchilar (rol: user) uchun kabinet kerak emas — bosh sahifaga
+      navigate("/");
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
-    if (!loginData.phone.trim() || !loginData.password.trim()) {
+    if (!loginData.username.trim() || !loginData.password.trim()) {
       setError(
         lang === "uz"
-          ? "Telefon va parolni kiriting"
-          : "Введите телефон и пароль"
+          ? "Username va parolni kiriting"
+          : "Введите username и пароль"
       );
       return;
     }
 
     setLoading(true);
-    const ok = await adminLogin(loginData.phone.trim(), loginData.password);
+    const ok = await adminLogin(loginData.username.trim(), loginData.password);
     setLoading(false);
 
     if (ok) {
-      const { currentUser } = useStore.getState();
-      if (currentUser?.role === "admin" || currentUser?.role === "superadmin") {
-        navigate("/admin");
-      } else {
-        navigate("/cabinet");
-      }
+      goAfterAuth();
     } else {
       setError(
         lang === "uz"
-          ? "Telefon raqam yoki parol noto'g'ri. Ro'yxatdan o'tmagan bo'lsangiz avval ro'yxatdan o'ting."
-          : "Телефон или пароль неверны. Если не зарегистрированы — сначала зарегистрируйтесь."
+          ? "Username yoki parol noto'g'ri"
+          : "Username или пароль неверны"
       );
     }
   };
 
-  // ── REGISTER ──────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
-    // Validatsiya
     if (!regData.name.trim()) {
-      setError(lang === "uz" ? "Ismingizni kiriting" : "Введите имя");
+      setError(lang === "uz" ? "Ism kiritilishi shart" : "Имя обязательно");
       return;
     }
-    if (!regData.phone.trim()) {
-      setError(
-        lang === "uz" ? "Telefon raqamni kiriting" : "Введите номер телефона"
-      );
-      return;
-    }
-    if (regData.password.length < 4) {
+    if (!isValidPhone(regData.phone)) {
       setError(
         lang === "uz"
-          ? "Parol kamida 4 ta belgidan iborat bo'lsin"
-          : "Пароль минимум 4 символа"
+          ? "Telefon raqamni to'liq kiriting (+998 XX XXX XX XX)"
+          : "Введите полный номер телефона"
       );
       return;
     }
-    if (regData.password !== regData.confirmPassword) {
-      setError(lang === "uz" ? "Parollar mos kelmadi" : "Пароли не совпадают");
+    if (regData.password.length < 6) {
+      setError(
+        lang === "uz"
+          ? "Parol kamida 6 ta belgidan iborat bo'lsin"
+          : "Пароль минимум 6 символов"
+      );
       return;
     }
 
     setLoading(true);
     const res = await register({
       name: regData.name.trim(),
-      phone: regData.phone.trim(),
+      full_name: regData.full_name.trim(),
+      phone: regData.phone,
       password: regData.password,
-      school: regData.school.trim(),
-      age: parseInt(regData.age) || 0,
-      is_disabled: regData.is_disabled,
-      card_number: "",
     });
     setLoading(false);
 
-    if (res.success) {
-      setSuccess(
-        lang === "uz"
-          ? "✅ Muvaffaqiyatli! Kabinetga yo'naltirilmoqda..."
-          : "✅ Успешно! Перенаправляем в кабинет..."
-      );
-      setTimeout(() => navigate("/cabinet"), 1000);
+    if (res.ok) {
+      goAfterAuth();
     } else {
-      // Telefon band bo'lsa — aniq xabar
-      const msg = res.error || "";
-      if (
-        msg.toLowerCase().includes("allaqachon") ||
-        msg.toLowerCase().includes("already") ||
-        msg.toLowerCase().includes("band")
-      ) {
-        setError(
-          lang === "uz"
-            ? `❌ Kechirasiz, bu telefon raqam (${regData.phone}) allaqachon ro'yxatdan o'tgan. "Kirish" tabida telefon va parolingiz bilan kiring.`
-            : `❌ Извините, этот номер (${regData.phone}) уже зарегистрирован. Войдите через вкладку "Войти".`
-        );
-      } else {
-        setError(
-          msg || (lang === "uz" ? "Xatolik yuz berdi" : "Произошла ошибка")
-        );
-      }
+      setError(res.error || (lang === "uz" ? "Xatolik" : "Ошибка"));
     }
   };
+
+  const tabBtn = (key, labelUz, labelRu) => (
+    <button
+      type="button"
+      onClick={() => {
+        setTab(key);
+        setError("");
+      }}
+      className={`flex-1 py-3 text-sm font-bold transition border-b-2 ${
+        tab === key
+          ? "border-[#1a56db] text-[#1a56db]"
+          : "border-transparent text-gray-400 hover:text-gray-600"
+      }`}
+    >
+      {lang === "uz" ? labelUz : labelRu}
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-        {/* Back */}
         <button
           onClick={() => navigate("/")}
           className="m-4 flex items-center gap-1 text-sm text-gray-500 hover:text-[#1a56db] transition"
@@ -156,92 +130,54 @@ export default function AuthPage() {
           <div className="text-center mb-6">
             <div className="text-5xl mb-2">🎨</div>
             <h1 className="text-2xl font-black text-gray-900">
-              {mode === "login"
+              {tab === "login"
                 ? lang === "uz"
-                  ? "Kabinetga kirish"
-                  : "Войти в кабинет"
+                  ? "Tizimga kirish"
+                  : "Вход в систему"
                 : lang === "uz"
                 ? "Ro'yxatdan o'tish"
                 : "Регистрация"}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {mode === "login"
+              {tab === "login"
                 ? lang === "uz"
-                  ? "Telefon raqam va parol bilan kiring"
-                  : "Войдите с телефоном и паролем"
+                  ? "Username va parol bilan kiring"
+                  : "Войдите с username и паролем"
                 : lang === "uz"
-                ? "Birinchi marta \u2014 ro'yxatdan o'ting"
-                : "Первый раз — зарегистрируйтесь"}
+                ? "Yangi hisob yarating"
+                : "Создайте новый аккаунт"}
             </p>
           </div>
 
-          {/* Toggle buttons */}
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-xl mb-6">
-            <button
-              onClick={() => {
-                setMode("login");
-                setError("");
-                setSuccess("");
-              }}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${
-                mode === "login"
-                  ? "bg-white shadow text-[#1a56db]"
-                  : "text-gray-500"
-              }`}
-            >
-              {lang === "uz" ? "Kirish" : "Войти"}
-            </button>
-            <button
-              onClick={() => {
-                setMode("register");
-                setError("");
-                setSuccess("");
-              }}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${
-                mode === "register"
-                  ? "bg-white shadow text-[#1a56db]"
-                  : "text-gray-500"
-              }`}
-            >
-              {lang === "uz" ? "Ro'yxatdan o'tish" : "Регистрация"}
-            </button>
+          <div className="flex border-b border-gray-100 mb-5">
+            {tabBtn("login", "Kirish", "Вход")}
+            {tabBtn("register", "Ro'yxatdan o'tish", "Регистрация")}
           </div>
 
-          {/* Alerts */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
               <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
-              <CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
-              <span>{success}</span>
-            </div>
-          )}
 
-          {/* LOGIN */}
-          {mode === "login" && (
-            <form onSubmit={handleLogin} className="space-y-4">
+          {tab === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-3">
               <div className="relative">
-                <Phone
+                <User
                   size={18}
                   className="absolute left-3 top-3 text-gray-400"
                 />
                 <input
-                  type="tel"
-                  placeholder={
-                    lang === "uz"
-                      ? "Telefon raqam (+998...)"
-                      : "Телефон (+998...)"
-                  }
-                  value={loginData.phone}
+                  type="text"
+                  placeholder={lang === "uz" ? "Username yoki telefon" : "Username или телефон"}
+                  value={loginData.username}
                   onChange={(e) =>
-                    setLoginData({ ...loginData, phone: e.target.value })
+                    setLoginData({ ...loginData, username: e.target.value })
                   }
                   className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
                   required
+                  autoFocus
                 />
               </div>
               <div className="relative">
@@ -270,16 +206,18 @@ export default function AuthPage() {
                     ? "Tekshirilmoqda..."
                     : "Проверка..."
                   : lang === "uz"
-                  ? "Kabinetga kirish"
-                  : "Войти в кабинет"}
+                  ? "Kirish"
+                  : "Войти"}
               </button>
 
-              <p className="text-center text-sm text-gray-500 mt-3">
-                {lang === "uz" ? "Akkauntingiz yo'qmi?" : "Нет аккаунта?"}{" "}
+              <p className="text-center text-xs text-gray-400 mt-4">
+                {lang === "uz"
+                  ? "Hisobingiz yo'qmi? "
+                  : "Нет аккаунта? "}
                 <button
                   type="button"
                   onClick={() => {
-                    setMode("register");
+                    setTab("register");
                     setError("");
                   }}
                   className="text-[#1a56db] font-bold hover:underline"
@@ -288,26 +226,37 @@ export default function AuthPage() {
                 </button>
               </p>
             </form>
-          )}
-
-          {/* REGISTER */}
-          {mode === "register" && (
+          ) : (
             <form onSubmit={handleRegister} className="space-y-3">
-              <div className="relative">
-                <User
-                  size={18}
-                  className="absolute left-3 top-3 text-gray-400"
-                />
-                <input
-                  type="text"
-                  placeholder={lang === "uz" ? "Ism familiya" : "Имя и фамилия"}
-                  value={regData.name}
-                  onChange={(e) =>
-                    setRegData({ ...regData, name: e.target.value })
-                  }
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <User
+                    size={18}
+                    className="absolute left-3 top-3 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder={lang === "uz" ? "Ism *" : "Имя *"}
+                    value={regData.name}
+                    onChange={(e) =>
+                      setRegData({ ...regData, name: e.target.value })
+                    }
+                    className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder={lang === "uz" ? "Familiya" : "Фамилия"}
+                    value={regData.full_name}
+                    onChange={(e) =>
+                      setRegData({ ...regData, full_name: e.target.value })
+                    }
+                    className="w-full px-3 py-3 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
+                  />
+                </div>
               </div>
 
               <div className="relative">
@@ -317,140 +266,67 @@ export default function AuthPage() {
                 />
                 <input
                   type="tel"
-                  placeholder="+998 90 123 45 67"
+                  inputMode="numeric"
+                  placeholder="+998 __ ___ __ __"
                   value={regData.phone}
                   onChange={(e) =>
-                    setRegData({ ...regData, phone: e.target.value })
+                    setRegData({
+                      ...regData,
+                      phone: formatPhone(e.target.value),
+                    })
                   }
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
+                  className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition font-mono"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-3 top-3 text-gray-400"
-                  />
-                  <input
-                    type="password"
-                    placeholder={lang === "uz" ? "Parol" : "Пароль"}
-                    value={regData.password}
-                    onChange={(e) =>
-                      setRegData({ ...regData, password: e.target.value })
-                    }
-                    className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
-                    minLength={4}
-                    required
-                  />
-                </div>
-                <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-3 top-3 text-gray-400"
-                  />
-                  <input
-                    type="password"
-                    placeholder={
-                      lang === "uz" ? "Parolni takrorlang" : "Повторите пароль"
-                    }
-                    value={regData.confirmPassword}
-                    onChange={(e) =>
-                      setRegData({
-                        ...regData,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
-                    minLength={4}
-                    required
-                  />
-                </div>
-              </div>
-
               <div className="relative">
-                <School
+                <Lock
                   size={18}
                   className="absolute left-3 top-3 text-gray-400"
                 />
                 <input
-                  type="text"
-                  placeholder={lang === "uz" ? "Maktab nomi" : "Название школы"}
-                  value={regData.school}
-                  onChange={(e) =>
-                    setRegData({ ...regData, school: e.target.value })
+                  type="password"
+                  placeholder={
+                    lang === "uz"
+                      ? "Parol (kamida 6 belgi)"
+                      : "Пароль (мин. 6 символов)"
                   }
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
+                  value={regData.password}
+                  onChange={(e) =>
+                    setRegData({ ...regData, password: e.target.value })
+                  }
+                  className="w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
+                  required
+                  minLength={6}
                 />
               </div>
-
-              <div className="relative">
-                <Calendar
-                  size={18}
-                  className="absolute left-3 top-3 text-gray-400"
-                />
-                <input
-                  type="number"
-                  placeholder={lang === "uz" ? "Yosh" : "Возраст"}
-                  value={regData.age}
-                  onChange={(e) =>
-                    setRegData({ ...regData, age: e.target.value })
-                  }
-                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#1a56db] transition"
-                  min={1}
-                  max={100}
-                />
-              </div>
-
-              {/* Imkoniyati cheklangan checkbox */}
-              <label className="flex items-center gap-3 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 cursor-pointer hover:bg-rose-100 transition">
-                <input
-                  type="checkbox"
-                  checked={regData.is_disabled}
-                  onChange={(e) =>
-                    setRegData({
-                      ...regData,
-                      is_disabled: e.target.checked,
-                    })
-                  }
-                  className="w-5 h-5 accent-rose-500"
-                />
-                <Heart size={16} className="text-rose-500" />
-                <span className="text-sm font-semibold text-rose-700">
-                  {lang === "uz"
-                    ? "Imkoniyati cheklangan"
-                    : "С ограниченными возможностями"}
-                </span>
-              </label>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#1a56db] hover:bg-[#1341a8] text-white font-black py-3 rounded-xl transition disabled:opacity-50 mt-4"
+                className="w-full bg-[#1a56db] hover:bg-[#1341a8] text-white font-black py-3 rounded-xl transition disabled:opacity-50"
               >
                 {loading
                   ? lang === "uz"
-                    ? "Yaratilmoqda..."
-                    : "Создаётся..."
+                    ? "Yuborilmoqda..."
+                    : "Отправка..."
                   : lang === "uz"
                   ? "Ro'yxatdan o'tish"
                   : "Зарегистрироваться"}
               </button>
 
-              <p className="text-center text-sm text-gray-500 mt-3">
-                {lang === "uz"
-                  ? "Allaqachon akkauntingiz bormi?"
-                  : "Уже есть аккаунт?"}{" "}
+              <p className="text-center text-xs text-gray-400 mt-4">
+                {lang === "uz" ? "Hisobingiz bormi? " : "Уже есть аккаунт? "}
                 <button
                   type="button"
                   onClick={() => {
-                    setMode("login");
+                    setTab("login");
                     setError("");
                   }}
                   className="text-[#1a56db] font-bold hover:underline"
                 >
-                  {lang === "uz" ? "Kirish" : "Войти"}
+                  {lang === "uz" ? "Kiring" : "Войти"}
                 </button>
               </p>
             </form>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { CheckCircle, ArrowLeft, Copy, X } from "lucide-react";
 import useStore from "../store/useStore";
+import { formatPhone } from "../utils/phone";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export default function CheckoutPage() {
     t,
     lang,
     adminLoggedIn,
+    currentUser,
     cart,
     cartTotal,
     addOrder,
@@ -16,12 +18,15 @@ export default function CheckoutPage() {
     removeFromCart,
   } = useStore();
 
+  const buildFullName = (u) =>
+    [u?.name, u?.full_name].filter(Boolean).join(" ").trim();
+
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copiedCard, setCopiedCard] = useState(null);
   const [form, setForm] = useState({
-    name: "",
-    phone: "",
+    name: buildFullName(currentUser),
+    phone: currentUser?.phone || "",
     address: "",
     city: "Qarshi",
     payment: "cash",
@@ -45,6 +50,16 @@ export default function CheckoutPage() {
       // navigate("/");
     }
   }, [adminLoggedIn, navigate, lang]);
+
+  // currentUser yuklangach, formani avtomatik to'ldirish (faqat bo'sh bo'lsa)
+  useEffect(() => {
+    if (!currentUser) return;
+    setForm((prev) => ({
+      ...prev,
+      name: prev.name || buildFullName(currentUser),
+      phone: prev.phone || currentUser.phone || "",
+    }));
+  }, [currentUser]);
 
   // Agar login qilmagan bo'lsa — hech narsa ko'rsatmaymiz
   if (!adminLoggedIn) return null;
@@ -246,9 +261,12 @@ export default function CheckoutPage() {
               </label>
               <input
                 type="tel"
+                inputMode="numeric"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a56db] transition ${
+                onChange={(e) =>
+                  setForm({ ...form, phone: formatPhone(e.target.value) })
+                }
+                className={`w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-[#1a56db] transition font-mono ${
                   errors.phone ? "border-red-400" : "border-gray-200"
                 }`}
                 placeholder="+998 __ ___ __ __"

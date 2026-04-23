@@ -2,6 +2,11 @@
   RewriteEngine On
   RewriteBase /
 
+  # HTTPS redirect (faqat yoshijodkor.uz uchun)
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP_HOST} ^(www\.)?yoshijodkor\.uz$ [NC]
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
   # Mavjud fayl yoki papka bo'lsa - to'g'ridan-to'g'ri xizmat ko'rsatish
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -9,6 +14,13 @@
 
   # Qolgan hamma so'rovlarni index.html ga yuborish (SPA fallback)
   RewriteRule ^ index.html [L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 # To'g'ri MIME tiplar

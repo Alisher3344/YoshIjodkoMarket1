@@ -1,4 +1,4 @@
-const BASE_URL = "https://web-production-c57d3.up.railway.app/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 let _token = localStorage.getItem("token") || null;
 
@@ -82,5 +82,23 @@ export const api = {
     request("GET", `/products/user/${userId}`).then((r) =>
       Array.isArray(r) ? r : []
     ),
+  // Students (o'quvchilar)
+  getStudents: () =>
+    request("GET", "/students/").then((r) => ({
+      data: Array.isArray(r) ? r : [],
+    })),
+  getMyStudents: () =>
+    request("GET", "/students/my/list").then((r) => ({
+      data: Array.isArray(r) ? r : [],
+    })),
+  getStudent: (id) => request("GET", `/students/${id}`),
+  getStudentProducts: (id) =>
+    request("GET", `/students/${id}/products`).then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  createStudent: (data) => request("POST", "/students/", data),
+  updateStudent: (id, data) => request("PUT", `/students/${id}`, data),
+  deleteStudent: (id) => request("DELETE", `/students/${id}`),
+  toggleStudent: (id) => request("PATCH", `/students/${id}/toggle`),
   sendContact: (data) => request("POST", "/contact/", data),
 };

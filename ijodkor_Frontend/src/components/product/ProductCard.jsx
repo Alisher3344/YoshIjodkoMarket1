@@ -140,12 +140,12 @@ export default function ProductCard({ product }) {
         </div>
 
         <div
-          className={`p-3 flex flex-col flex-1 ${
-            isDisabled ? "pt-12" : "pt-3"
+          className={`p-2.5 flex flex-col flex-1 ${
+            isDisabled ? "pt-10" : "pt-2.5"
           }`}
         >
           {(authorRegion || authorDistrict) && (
-            <div className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+            <div className="text-[11px] text-gray-500 flex items-center gap-1 mb-0.5">
               <MapPin size={10} className="text-[#1a56db] flex-shrink-0" />
               <span className="truncate">
                 {[authorRegion, authorDistrict].filter(Boolean).join(", ")}
@@ -154,7 +154,7 @@ export default function ProductCard({ product }) {
           )}
 
           {(authorSchool || authorGrade) && (
-            <div className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+            <div className="text-[11px] text-gray-500 flex items-center gap-1 mb-1">
               <School size={10} className="flex-shrink-0" />
               <span className="truncate">
                 {authorSchool}
@@ -170,12 +170,12 @@ export default function ProductCard({ product }) {
 
           <h3
             onClick={() => navigate(`/product/${product.id}`)}
-            className="font-black text-sm text-gray-900 line-clamp-2 mb-2 min-h-[40px] cursor-pointer hover:text-[#1a56db] transition"
+            className="font-black text-sm text-gray-900 line-clamp-2 mb-1.5 cursor-pointer hover:text-[#1a56db] transition leading-snug"
           >
             {name}
           </h3>
 
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1">
               <Star size={12} className="fill-yellow-400 text-yellow-400" />
               <span className="text-xs font-bold text-gray-700">
@@ -193,12 +193,12 @@ export default function ProductCard({ product }) {
           </div>
 
           {authorName && (
-            <div className="text-xs text-gray-600 mb-2 line-clamp-1">
+            <div className="text-[11px] text-gray-600 mb-1.5 line-clamp-1">
               ✍️ <span className="font-semibold">{authorName}</span>
             </div>
           )}
 
-          <div className="flex items-baseline gap-2 mb-3 mt-auto">
+          <div className="flex items-baseline gap-2 mb-2 mt-auto">
             <span className="text-[#1a56db] font-black text-base">
               {formatPrice(product.price)}
             </span>
@@ -209,11 +209,11 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {isDisabled && (
               <button
                 onClick={() => setShowDonation(true)}
-                className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-2.5 rounded-xl text-sm font-black shadow-md hover:shadow-lg transition"
+                className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-2 rounded-lg text-xs font-black shadow-md hover:shadow-lg transition"
               >
                 ❤️ {lang === "uz" ? "Imkoniyati cheklangan" : "Особый"}
               </button>
@@ -223,7 +223,7 @@ export default function ProductCard({ product }) {
                 e.stopPropagation();
                 addToCart(product);
               }}
-              className="w-full flex items-center justify-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white py-2.5 rounded-xl text-sm font-bold transition"
+              className="w-full flex items-center justify-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white py-2 rounded-lg text-xs font-bold transition"
             >
               <ShoppingCart size={14} />
               {lang === "uz" ? "Savatga qo'shish" : "В корзину"}

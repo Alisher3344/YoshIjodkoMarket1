@@ -7,13 +7,7 @@ import {
   ArrowLeft,
   Minus,
   Plus,
-  Package,
-  MapPin,
-  School,
-  User,
-  Copy,
   Check,
-  Phone,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import { api } from "../services/api";
@@ -22,7 +16,7 @@ import ProductCard from "../components/product/ProductCard";
 export default function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { lang, addToCart, products, fetchProducts } = useStore();
+  const { lang, addToCart } = useStore();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,15 +47,32 @@ export default function ProductPage() {
     window.scrollTo(0, 0);
   }, [id]);
 
-  // Muallif boshqa mahsulotlarini yuklash
+  // O'quvchining (student) boshqa mahsulotlarini yuklash
   useEffect(() => {
-    if (product?.user_id) {
-      api.getProductsByUser(product.user_id).then((list) => {
-        // Joriy mahsulotni olib tashlash
-        setAuthorProducts(list.filter((p) => p.id !== product.id));
-      });
+    if (product?.student_id) {
+      api
+        .getStudentProducts(product.student_id)
+        .then((list) => {
+          setAuthorProducts(
+            (list || []).filter((p) => p.id !== product.id)
+          );
+        })
+        .catch(() => setAuthorProducts([]));
+    } else if (product?.author && product?.user_id) {
+      api
+        .getProductsByUser(product.user_id)
+        .then((list) => {
+          setAuthorProducts(
+            (list || []).filter(
+              (p) => p.id !== product.id && p.author === product.author
+            )
+          );
+        })
+        .catch(() => setAuthorProducts([]));
+    } else {
+      setAuthorProducts([]);
     }
-  }, [product?.user_id]);
+  }, [product?.student_id, product?.user_id, product?.author, product?.id]);
 
   // camelCase ga o'tkazish
   const p = product
@@ -197,168 +208,229 @@ export default function ProductPage() {
 
         {/* Ma'lumot */}
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Star size={16} className="fill-yellow-400 text-yellow-400" />
-            <span className="font-bold">{p.rating || 5}</span>
-            <span className="text-gray-400">
-              ({p.reviews || 0} {lang === "uz" ? "sharh" : "отзывов"})
-            </span>
+          {/* Mahsulot nomi + avatar + "Maxsus ehtiyojli" badge */}
+          <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-3 flex-wrap">
+                <h1 className="text-2xl md:text-3xl font-black text-gray-900">
+                  {name}
+                </h1>
+                {isDisabled && (
+                  <span className="bg-gradient-to-r from-rose-500 to-pink-600 text-white px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 whitespace-nowrap mt-1">
+                    ❤️ {lang === "uz" ? "Maxsus ehtiyojli" : "Особый"}
+                  </span>
+                )}
+              </div>
+              {authorName && (
+                <div className="text-sm text-gray-500 mt-2 flex items-center gap-1.5">
+                  <span>✍️</span>
+                  <span className="font-semibold">{authorName}</span>
+                </div>
+              )}
+            </div>
+
+            {/* O'quvchi profil rasmi */}
+            <div
+              className={`w-20 h-20 rounded-2xl overflow-hidden border-4 ${
+                isDisabled ? "border-rose-300" : "border-blue-200"
+              } bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center flex-shrink-0 shadow-md`}
+              title={authorName}
+            >
+              {p.authorAvatar ? (
+                <img
+                  src={p.authorAvatar}
+                  alt={authorName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center text-3xl">${
+                      isDisabled ? "❤️" : "🎓"
+                    }</div>`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-3xl">
+                  {isDisabled ? "❤️" : "🎓"}
+                </div>
+              )}
+            </div>
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-3">
-            {name}
-          </h1>
-
-          {/* Narx */}
-          <div className="flex items-baseline gap-3 mb-4">
-            <span className="text-3xl font-black text-[#1a56db]">
-              {formatPrice(p.price)}
-            </span>
-            {p.oldPrice && (
-              <span className="text-lg text-gray-400 line-through">
-                {formatPrice(p.oldPrice)}
+          {/* Rating yulduzchalari */}
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    size={18}
+                    className={
+                      star <= Math.round(p.rating || 5)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "fill-gray-200 text-gray-200"
+                    }
+                  />
+                ))}
+              </div>
+              <span className="font-bold text-gray-800">{p.rating || 5}</span>
+              <span className="text-gray-400 text-sm">
+                ({p.reviews || 0} {lang === "uz" ? "sharh" : "отзывов"})
               </span>
+            </div>
+
+            {p.sold > 0 && (
+              <>
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <span>🎖️</span>
+                  <span className="font-bold">{p.sold}</span>
+                  <span>{lang === "uz" ? "sotilgan" : "продано"}</span>
+                </div>
+              </>
             )}
           </div>
 
-          {/* Muallif kartasi */}
-          <div
-            className={`rounded-2xl p-4 mb-5 ${
-              isDisabled
-                ? "bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200"
-                : "bg-blue-50 border border-blue-100"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className={`w-16 h-16 rounded-full overflow-hidden border-4 ${
-                  isDisabled ? "border-rose-300" : "border-blue-300"
-                } bg-white flex-shrink-0`}
-              >
-                {p.authorAvatar ? (
-                  <img
-                    src={p.authorAvatar}
-                    alt={authorName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl bg-gray-100">
-                    {isDisabled ? "❤️" : "🎓"}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-black text-gray-800 truncate">
-                  {authorName || "-"}
-                </div>
-                {schoolName && (
-                  <div className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
-                    <School size={11} /> {schoolName}
-                  </div>
-                )}
-                {p.grade && (
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    📚 {p.grade}-sinf
-                  </div>
-                )}
-              </div>
+          {/* Narx bloki */}
+          <div className="bg-blue-50 rounded-2xl p-5 mb-5">
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black text-[#1a56db]">
+                {formatPrice(p.price)}
+              </span>
+              {p.oldPrice && (
+                <span className="text-lg text-gray-400 line-through">
+                  {formatPrice(p.oldPrice)}
+                </span>
+              )}
             </div>
+          </div>
 
-            {(districtName || regionName) && (
-              <div className="text-xs text-gray-600 flex items-center gap-1 mb-2">
-                <MapPin size={11} />
-                <span>
-                  {[districtName, regionName].filter(Boolean).join(", ")}
+          {/* Ma'lumotlar jadvali */}
+          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden mb-5">
+            {regionName && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <span className="text-gray-500 text-sm">
+                  {lang === "uz" ? "Viloyat:" : "Область:"}
+                </span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {regionName}
                 </span>
               </div>
             )}
-
-            {/* Imkoniyati cheklangan — karta raqami */}
-            {/* {isDisabled && p.cardNumber && (
-              <div className="bg-white rounded-xl p-3 mt-3 border-2 border-rose-200">
-                <div className="text-xs font-bold text-rose-600 mb-2 uppercase flex items-center gap-1">
-                  💳{" "}
-                  {lang === "uz" ? "Yordam karta raqami" : "Номер карты помощи"}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 font-mono font-black text-base text-gray-800 tracking-wider">
-                    {p.cardNumber}
-                  </div>
-                  <button
-                    onClick={handleCopy}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                      copied
-                        ? "bg-green-500 text-white"
-                        : "bg-[#1a56db] hover:bg-[#1341a8] text-white"
-                    }`}
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={12} /> ✓
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} /> {lang === "uz" ? "Nusxa" : "Копия"}
-                      </>
-                    )}
-                  </button>
-                </div>
+            {districtName && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <span className="text-gray-500 text-sm">
+                  {lang === "uz" ? "Tuman:" : "Район:"}
+                </span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {districtName}
+                </span>
               </div>
-            )} */}
-          </div>
-
-          {/* Stock */}
-          <div className="flex items-center gap-2 mb-4">
-            <Package size={14} className="text-gray-400" />
-            <span className="text-sm text-gray-600">
-              {lang === "uz" ? "Mavjud" : "В наличии"}:{" "}
-              <span className="font-bold text-green-600">
+            )}
+            {schoolName && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <span className="text-gray-500 text-sm">
+                  {lang === "uz" ? "Maktab:" : "Школа:"}
+                </span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {schoolName}
+                </span>
+              </div>
+            )}
+            {p.grade && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <span className="text-gray-500 text-sm">
+                  {lang === "uz" ? "Sinf:" : "Класс:"}
+                </span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {p.grade}
+                </span>
+              </div>
+            )}
+            {authorName && (
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <span className="text-gray-500 text-sm">
+                  {lang === "uz" ? "Muallif:" : "Автор:"}
+                </span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {authorName}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between px-5 py-3">
+              <span className="text-gray-500 text-sm">
+                {lang === "uz" ? "Mavjud:" : "В наличии:"}
+              </span>
+              <span
+                className={`font-bold text-sm ${
+                  p.stock > 0 ? "text-green-600" : "text-red-500"
+                }`}
+              >
                 {p.stock} {lang === "uz" ? "dona" : "шт"}
               </span>
-            </span>
+            </div>
           </div>
 
-          {/* Miqdor */}
-          <div className="flex items-center gap-3 mb-5">
-            <span className="text-sm font-bold text-gray-700">
-              {lang === "uz" ? "Miqdor" : "Количество"}:
-            </span>
+          {/* Miqdor + Savat */}
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center gap-2 bg-gray-100 rounded-xl overflow-hidden">
               <button
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="p-2 hover:bg-gray-200 transition"
+                className="p-2.5 hover:bg-gray-200 transition"
               >
                 <Minus size={14} />
               </button>
-              <span className="px-4 font-bold">{qty}</span>
+              <span className="px-4 font-bold min-w-[40px] text-center">
+                {qty}
+              </span>
               <button
                 onClick={() => setQty(Math.min(p.stock, qty + 1))}
-                className="p-2 hover:bg-gray-200 transition"
+                className="p-2.5 hover:bg-gray-200 transition"
               >
                 <Plus size={14} />
               </button>
             </div>
-          </div>
 
-          {/* Tugmalar */}
-          <div className="flex gap-3">
             <button
               onClick={handleAddToCart}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white py-3.5 rounded-xl font-black transition"
+              className="flex-1 flex items-center justify-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white py-3 rounded-xl font-black transition"
             >
               <ShoppingCart size={18} />
               {lang === "uz" ? "Savatga qo'shish" : "В корзину"}
             </button>
-            <button
-              onClick={() => {
-                handleAddToCart();
-                navigate("/checkout");
-              }}
-              className="flex-1 bg-[#f97316] hover:bg-[#c2570d] text-white py-3.5 rounded-xl font-black transition"
-            >
-              {lang === "uz" ? "Hoziroq olish" : "Купить сейчас"}
-            </button>
           </div>
+
+          {/* Hozir sotib ol */}
+          <button
+            onClick={() => {
+              handleAddToCart();
+              navigate("/checkout");
+            }}
+            className="w-full bg-[#f97316] hover:bg-[#c2570d] text-white py-3.5 rounded-xl font-black transition mb-3"
+          >
+            {lang === "uz" ? "Hozir sotib ol →" : "Купить сейчас →"}
+          </button>
+
+          {/* Ehson qilish (faqat imkoniyati cheklangan uchun) */}
+          {isDisabled && p.cardNumber && (
+            <button
+              onClick={handleCopy}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white py-3.5 rounded-xl font-black transition"
+            >
+              {copied ? (
+                <>
+                  <Check size={16} />
+                  {lang === "uz" ? "Karta nusxalandi!" : "Карта скопирована!"}
+                </>
+              ) : (
+                <>
+                  ❤️{" "}
+                  {lang === "uz"
+                    ? "Ehson qilish (kartaga pul o'tkazish)"
+                    : "Пожертвовать (перевод на карту)"}
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
