@@ -342,7 +342,7 @@ export default function AdminPage() {
   // ── Login sahifasi ───────────────────────────────────────────────────────
   if (!adminLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="admin-shell min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm border border-gray-100">
           <div className="text-center mb-8">
             <div className="text-5xl mb-3">🔐</div>
@@ -463,7 +463,7 @@ export default function AdminPage() {
 
   // ── Dashboard ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="admin-shell min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-56 bg-white shadow-sm border-r border-gray-100 flex flex-col fixed h-full z-10">
         <div className="p-5 border-b">

@@ -327,7 +327,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="admin-shell min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-sm border-r border-gray-100 flex flex-col fixed h-full z-10">
         <div className="p-5 border-b">
