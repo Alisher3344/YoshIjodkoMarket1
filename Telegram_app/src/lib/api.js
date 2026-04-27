@@ -58,6 +58,10 @@ export const api = {
   getSchools: () =>
     request("GET", "/schools/").then((r) => (Array.isArray(r) ? r : [])),
 
+  // Hududlar — DB'dan
+  getRegions: () =>
+    request("GET", "/regions/").then((r) => (Array.isArray(r) ? r : [])),
+
   // Mahsulotlar (asosiy backend bilan bir xil)
   getProducts: () =>
     request("GET", "/products/").then((r) => (Array.isArray(r) ? r : [])),

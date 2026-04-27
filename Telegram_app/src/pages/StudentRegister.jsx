@@ -1,12 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { haptic, showAlert } from "../lib/tg";
-import {
-  REGION_NAMES,
-  getCities,
-  getDistricts,
-  buildAvailability,
-} from "../lib/uzRegions";
+
+// DB'dan kelgan regions: [{name, cities:[{name}], districts:[{name}]}]
+function buildAvailability(schools) {
+  const regions = new Set();
+  const citiesByRegion = {};
+  const districtsByRegion = {};
+  for (const s of schools || []) {
+    if (s.region) {
+      regions.add(s.region);
+      if (s.city) {
+        citiesByRegion[s.region] = citiesByRegion[s.region] || new Set();
+        citiesByRegion[s.region].add(s.city);
+      }
+      if (s.district) {
+        districtsByRegion[s.region] = districtsByRegion[s.region] || new Set();
+        districtsByRegion[s.region].add(s.district);
+      }
+    }
+  }
+  return {
+    hasRegion: (r) => regions.has(r),
+    hasCity: (r, c) => !!citiesByRegion[r]?.has(c),
+    hasDistrict: (r, d) => !!districtsByRegion[r]?.has(d),
+  };
+}
 
 export default function StudentRegister({ user, onRegistered }) {
   const [name, setName] = useState(user?.name || "");
@@ -20,19 +39,32 @@ export default function StudentRegister({ user, onRegistered }) {
   const [schoolId, setSchoolId] = useState("");
 
   const [schools, setSchools] = useState([]);
+  const [regionsData, setRegionsData] = useState([]); // DB'dan
   const [loadingSchools, setLoadingSchools] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api
-      .getSchools()
-      .then((list) => setSchools(Array.isArray(list) ? list : []))
-      .catch(() => setSchools([]))
-      .finally(() => setLoadingSchools(false));
+    Promise.all([
+      api.getSchools().then((list) => setSchools(Array.isArray(list) ? list : [])).catch(() => setSchools([])),
+      api.getRegions().then((list) => setRegionsData(Array.isArray(list) ? list : [])).catch(() => setRegionsData([])),
+    ]).finally(() => setLoadingSchools(false));
   }, []);
 
   const availability = useMemo(() => buildAvailability(schools), [schools]);
+
+  const REGION_NAMES = useMemo(
+    () => regionsData.map((r) => r.name).sort(),
+    [regionsData]
+  );
+  const getCities = (regionName) => {
+    const r = regionsData.find((x) => x.name === regionName);
+    return (r?.cities || []).map((c) => c.name);
+  };
+  const getDistricts = (regionName) => {
+    const r = regionsData.find((x) => x.name === regionName);
+    return (r?.districts || []).map((d) => d.name);
+  };
 
   // Viloyat tanlanganda — shahar+tumanlar bitta flat ro'yxatda
   const districtOptions = useMemo(() => {
@@ -48,7 +80,8 @@ export default function StudentRegister({ user, onRegistered }) {
       enabled: availability.hasDistrict(region, d),
     }));
     return [...cities, ...districts];
-  }, [region, availability]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [region, availability, regionsData]);
 
   // Tanlangan hudud bo'yicha maktablar
   const filteredSchools = useMemo(() => {

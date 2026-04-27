@@ -28,12 +28,8 @@ import {
 import useStore from "../store/useStore";
 import { api } from "../services/api";
 import { formatPhone } from "../utils/phone";
-import {
-  COUNTRIES,
-  REGION_NAMES,
-  getCities,
-  getDistricts,
-} from "../data/uzbekistanRegions";
+
+const COUNTRIES = ["O'zbekiston"];
 
 const EMPTY_FORM = {
   name_uz: "",
@@ -99,7 +95,20 @@ export default function AdminPage() {
     superadminDeleteStudent,
     darkMode,
     toggleDarkMode,
+    regions,
+    fetchRegions,
   } = useStore();
+
+  // Region helperlari (DB'dan)
+  const REGION_NAMES = (regions || []).map((r) => r.name);
+  const getCities = (regionName) => {
+    const r = (regions || []).find((x) => x.name === regionName);
+    return (r?.cities || []).map((c) => c.name);
+  };
+  const getDistricts = (regionName) => {
+    const r = (regions || []).find((x) => x.name === regionName);
+    return (r?.districts || []).map((d) => d.name);
+  };
 
   const [allStudentsSearch, setAllStudentsSearch] = useState("");
   const [allStudentsRegion, setAllStudentsRegion] = useState("");
@@ -215,6 +224,7 @@ export default function AdminPage() {
         fetchCustomOrders();
         fetchUsers();
         fetchAllStudentsGrouped();
+        fetchRegions();
       }
     }
   }, [adminLoggedIn]);

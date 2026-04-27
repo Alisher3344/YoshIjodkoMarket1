@@ -460,6 +460,23 @@ const useStore = create((set, get) => ({
     await get().fetchAllStudentsGrouped();
   },
 
+  // Hududlar (regions) — DB'dan
+  regions: [],
+  regionsLoading: false,
+  fetchRegions: async () => {
+    if (get().regions.length > 0) return; // cache
+    set({ regionsLoading: true });
+    try {
+      const list = await api.getRegions();
+      set({ regions: list });
+    } catch (err) {
+      console.error("fetchRegions:", err.message);
+      set({ regions: [] });
+    } finally {
+      set({ regionsLoading: false });
+    }
+  },
+
   addStudent: async (data) => {
     await api.createStudent(data);
     await get().fetchMyStudents();

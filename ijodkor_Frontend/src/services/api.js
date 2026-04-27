@@ -113,6 +113,12 @@ export const api = {
     ),
   superadminDeleteStudent: (id) =>
     request("DELETE", `/students/admin/${id}`),
+
+  // Hududlar (regions + districts) — DB'dan
+  getRegions: () =>
+    request("GET", "/regions/").then((r) => (Array.isArray(r) ? r : [])),
+  getRegionDistricts: (regionId) =>
+    request("GET", `/regions/${regionId}/districts`),
   getStudent: (id) => request("GET", `/students/${id}`),
   getStudentProducts: (id) =>
     request("GET", `/students/${id}/products`).then((r) =>
