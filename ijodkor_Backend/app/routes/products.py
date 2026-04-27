@@ -414,16 +414,13 @@ async def reject_product(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Rad etilgan mahsulot bazadan butunlay o'chiriladi (har qanday status'da)."""
     if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(status_code=403, detail="Faqat admin")
 
     product = await product_crud.get_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
-    if product.status != "pending":
-        raise HTTPException(
-            status_code=400, detail=f"Mahsulot allaqachon {product.status}"
-        )
 
     if current_user.role != "superadmin":
         if not product.student_id:
@@ -436,10 +433,10 @@ async def reject_product(
                 detail="Faqat o'z maktabingiz mahsulotlarini rad eta olasiz",
             )
 
-    product.status = "rejected"
+    deleted_id = product.id
+    await db.delete(product)
     await db.flush()
-    await db.refresh(product)
-    return {"success": True, "id": product.id, "status": product.status}
+    return {"success": True, "id": deleted_id, "deleted": True}
 
 
 @router.get("/user/{user_id}")

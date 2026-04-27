@@ -45,8 +45,12 @@ async def get_student(student_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{student_id}/products")
 async def student_products(student_id: int, db: AsyncSession = Depends(get_db)):
+    """Faqat tasdiqlangan mahsulotlar — pending va rejected'lar pastki ro'yxatda ko'rinmaydi.
+    Pending'lar admin panelda alohida sariq blokda chiqadi (pendingProducts state)."""
     result = await db.execute(
-        select(Product).where(Product.student_id == student_id).order_by(Product.id.desc())
+        select(Product)
+        .where(Product.student_id == student_id, Product.status == "approved")
+        .order_by(Product.id.desc())
     )
     return result.scalars().all()
 
