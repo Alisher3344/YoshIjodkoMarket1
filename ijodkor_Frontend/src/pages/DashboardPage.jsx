@@ -17,6 +17,7 @@ import {
   Home,
   UserPlus,
   XCircle,
+  Search,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import { formatPhone } from "../utils/phone";
@@ -68,9 +69,37 @@ export default function DashboardPage() {
     fetchPendingStudents,
     approveStudent,
     rejectStudent,
+    pendingProducts,
+    fetchPendingProducts,
+    approveProduct,
+    rejectProduct,
   } = useStore();
 
   const [tab, setTab] = useState("profile");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [pendingSearch, setPendingSearch] = useState("");
+
+  const filterStudent = (s, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase().trim();
+    return (
+      (s.name || "").toLowerCase().includes(q) ||
+      (s.full_name || "").toLowerCase().includes(q) ||
+      (s.grade || "").toLowerCase().includes(q) ||
+      (s.phone || "").toLowerCase().includes(q)
+    );
+  };
+
+  const filteredMyStudents = myStudents.filter((s) =>
+    filterStudent(s, studentSearch)
+  );
+  const filteredPendingStudents = pendingStudents.filter((s) =>
+    filterStudent(s, pendingSearch)
+  );
+
+  const studentPendingProducts = selectedStudent
+    ? pendingProducts.filter((p) => p.student_id === selectedStudent.id)
+    : [];
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
@@ -116,6 +145,7 @@ export default function DashboardPage() {
 
     fetchMyStudents();
     fetchPendingStudents();
+    fetchPendingProducts();
   }, [adminLoggedIn]);
 
   const handleImageUpload = (e, callback) => {
@@ -591,6 +621,35 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {/* Qidiruv */}
+            {myStudents.length > 0 && (
+              <div className="relative mb-5">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Ism, familiya, sinf yoki telefon bo'yicha qidirish..."
+                      : "Поиск по имени, классу, телефону..."
+                  }
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] bg-white"
+                />
+                {studentSearch && (
+                  <button
+                    onClick={() => setStudentSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            )}
+
             {myStudents.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
                 <div className="text-5xl mb-4">🎓</div>
@@ -600,13 +659,32 @@ export default function DashboardPage() {
                     : "Пока нет учеников"}
                 </p>
               </div>
+            ) : filteredMyStudents.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-12 text-gray-400">
+                <div className="text-4xl mb-3">🔍</div>
+                <p className="font-semibold">
+                  {lang === "uz"
+                    ? `"${studentSearch}" bo'yicha hech narsa topilmadi`
+                    : `Ничего не найдено по "${studentSearch}"`}
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {myStudents.map((s) => (
+                {filteredMyStudents.map((s) => {
+                  const pendingCount = pendingProducts.filter(
+                    (p) => p.student_id === s.id
+                  ).length;
+                  return (
                   <div
                     key={s.id}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition"
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition relative"
                   >
+                    {pendingCount > 0 && (
+                      <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs font-black rounded-full px-2.5 py-1 shadow-lg flex items-center gap-1 z-10">
+                        ⏳ {pendingCount}{" "}
+                        {lang === "uz" ? "yangi" : "новых"}
+                      </div>
+                    )}
                     <div className="flex items-start gap-3 mb-4">
                       {s.avatar ? (
                         <img
@@ -665,7 +743,8 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -693,6 +772,35 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {/* Qidiruv */}
+            {pendingStudents.length > 0 && (
+              <div className="relative mb-5">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={pendingSearch}
+                  onChange={(e) => setPendingSearch(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Ism, familiya, sinf yoki telefon bo'yicha qidirish..."
+                      : "Поиск по имени, классу, телефону..."
+                  }
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] bg-white"
+                />
+                {pendingSearch && (
+                  <button
+                    onClick={() => setPendingSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            )}
+
             {pendingStudents.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
                 <div className="text-5xl mb-4">📭</div>
@@ -702,9 +810,18 @@ export default function DashboardPage() {
                     : "Нет новых заявок"}
                 </p>
               </div>
+            ) : filteredPendingStudents.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-12 text-gray-400">
+                <div className="text-4xl mb-3">🔍</div>
+                <p className="font-semibold">
+                  {lang === "uz"
+                    ? `"${pendingSearch}" bo'yicha hech narsa topilmadi`
+                    : `Ничего не найдено по "${pendingSearch}"`}
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingStudents.map((s) => (
+                {filteredPendingStudents.map((s) => (
                   <div
                     key={s.id}
                     className="bg-white rounded-2xl shadow-sm border-2 border-amber-200 p-5"
@@ -839,6 +956,104 @@ export default function DashboardPage() {
                 {lang === "uz" ? "Mahsulot qo'shish" : "Добавить товар"}
               </button>
             </div>
+
+            {/* Telegram orqali yuklangan, hali tasdiqlanmagan mahsulotlar */}
+            {studentPendingProducts.length > 0 && (
+              <div className="mb-6 bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <h3 className="font-black text-amber-900">
+                      {lang === "uz"
+                        ? `Telegram'dan yuklangan — ${studentPendingProducts.length} ta tasdiq kutmoqda`
+                        : `Из Telegram — ожидают ${studentPendingProducts.length}`}
+                    </h3>
+                    <p className="text-xs text-amber-700">
+                      {lang === "uz"
+                        ? "O'quvchining o'zi yuklagan mahsulotlari. Ko'rib chiqing va tasdiqlang."
+                        : "Товары, загруженные учеником. Просмотрите и одобрите."}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {studentPendingProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      className="bg-white rounded-xl p-3 flex gap-3 border border-amber-200"
+                    >
+                      {p.image ? (
+                        <img
+                          src={p.image}
+                          alt=""
+                          className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <ImageIcon size={24} className="text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-sm text-gray-900 line-clamp-1">
+                          {p.name_uz}
+                        </div>
+                        <div className="text-xs text-[#1a56db] font-bold mt-0.5">
+                          {formatPrice(p.price)} · {p.stock} dona
+                        </div>
+                        {p.category && (
+                          <div className="text-[10px] bg-gray-100 text-gray-600 rounded inline-block px-1.5 py-0.5 mt-1">
+                            {p.category}
+                          </div>
+                        )}
+                        <div className="flex gap-1.5 mt-2">
+                          <button
+                            onClick={async () => {
+                              if (
+                                !confirm(
+                                  lang === "uz"
+                                    ? "Tasdiqlaysizmi?"
+                                    : "Одобрить?"
+                                )
+                              )
+                                return;
+                              try {
+                                await approveProduct(p.id);
+                              } catch (err) {
+                                alert(err.message);
+                              }
+                            }}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-bold text-[11px] flex items-center justify-center gap-1"
+                          >
+                            <Check size={12} />
+                            {lang === "uz" ? "Tasdiqlash" : "Одобрить"}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (
+                                !confirm(
+                                  lang === "uz"
+                                    ? "Rad etasizmi?"
+                                    : "Отклонить?"
+                                )
+                              )
+                                return;
+                              try {
+                                await rejectProduct(p.id);
+                              } catch (err) {
+                                alert(err.message);
+                              }
+                            }}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2 py-1 rounded font-bold text-[11px] flex items-center justify-center gap-1"
+                          >
+                            <XCircle size={12} />
+                            {lang === "uz" ? "Rad" : "Откл"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {studentProducts.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">

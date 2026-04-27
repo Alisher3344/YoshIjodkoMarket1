@@ -97,6 +97,14 @@ export const api = {
     ),
   approveStudent: (id) => request("POST", `/students/${id}/approve`),
   rejectStudent: (id) => request("POST", `/students/${id}/reject`),
+
+  // Pending products (Telegram orqali yuklangan)
+  getPendingProducts: () =>
+    request("GET", "/products/pending/list").then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  approveProduct: (id) => request("POST", `/products/${id}/approve`),
+  rejectProduct: (id) => request("POST", `/products/${id}/reject`),
   getStudent: (id) => request("GET", `/students/${id}`),
   getStudentProducts: (id) =>
     request("GET", `/students/${id}/products`).then((r) =>

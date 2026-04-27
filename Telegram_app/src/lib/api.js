@@ -44,6 +44,16 @@ export const api = {
   registerStudent: (data) =>
     request("POST", "/telegram/student-register", data),
 
+  // O'quvchi mahsulotlari
+  getMyStudentProducts: () =>
+    request("GET", "/telegram/student-products").then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  uploadStudentProduct: (data) =>
+    request("POST", "/telegram/student-product", data),
+  deleteMyStudentProduct: (id) =>
+    request("DELETE", `/telegram/student-product/${id}`),
+
   // Maktablar (ro'yxatdan o'tishda dropdown uchun)
   getSchools: () =>
     request("GET", "/schools/").then((r) => (Array.isArray(r) ? r : [])),

@@ -22,11 +22,13 @@ from ..core.security import (
 from ..models.user import User
 from ..models.student import Student
 from ..models.school import School
+from ..models.product import Product
 from ..schemas.telegram import (
     TelegramBotAuth,
     TelegramWebAppAuth,
     TelegramProfileUpdate,
     TelegramStudentRegister,
+    TelegramProductCreate,
 )
 from ..utils.telegram import verify_webapp_init_data
 from ..crud import student as student_crud
@@ -311,3 +313,122 @@ async def register_student(
         "status":  new_student.status,
         "student": student_dict(new_student),
     }
+
+
+# ─── O'quvchi mahsulot yuklashi ────────────────────────────────────────────
+
+def product_brief(p: Product) -> dict:
+    return {
+        "id":        p.id,
+        "name_uz":   p.name_uz or "",
+        "price":     p.price,
+        "stock":     p.stock,
+        "category":  p.category or "",
+        "image":     p.image or "",
+        "status":    p.status,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+@router.get("/student-products")
+async def my_student_products(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """O'quvchining o'zining barcha mahsulotlari (pending/approved/rejected)."""
+    student = await student_crud.get_by_user(db, current_user.id)
+    if not student:
+        return []
+    res = await db.execute(
+        select(Product)
+        .where(Product.student_id == student.id)
+        .order_by(Product.id.desc())
+    )
+    return [product_brief(p) for p in res.scalars().all()]
+
+
+@router.post("/student-product")
+async def upload_student_product(
+    data: TelegramProductCreate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """O'quvchi Mini App orqali mahsulot yuklaydi. status='pending'.
+    Maktab admini ko'rib tasdiqlagandan keyin saytda ko'rinadi."""
+    if not data.name_uz.strip():
+        raise HTTPException(status_code=400, detail="Mahsulot nomi kiritilishi shart")
+    if data.price <= 0:
+        raise HTTPException(status_code=400, detail="Narx 0 dan katta bo'lishi kerak")
+    if data.stock < 1:
+        raise HTTPException(status_code=400, detail="Soni kamida 1 bo'lishi kerak")
+
+    student = await student_crud.get_by_user(db, current_user.id)
+    if not student:
+        raise HTTPException(
+            status_code=400,
+            detail="Avval ro'yxatdan o'ting",
+        )
+    if student.status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Mahsulot yuklash uchun arizangiz tasdiqlangan bo'lishi kerak",
+        )
+
+    # Maktab ma'lumotlari student'dan
+    school_obj = None
+    if student.school_id:
+        sch_res = await db.execute(
+            select(School).where(School.id == student.school_id)
+        )
+        school_obj = sch_res.scalar_one_or_none()
+
+    new_product = Product(
+        user_id=current_user.id,
+        student_id=student.id,
+        name_uz=data.name_uz.strip(),
+        name_ru=data.name_uz.strip(),
+        desc_uz=data.desc_uz.strip(),
+        desc_ru="",
+        price=data.price,
+        stock=data.stock,
+        category=data.category or "",
+        image=data.image or "",
+        photo=student.avatar or "",
+        author=student.full_name or student.name,
+        author_ru=student.name_ru or student.name,
+        grade=student.grade or "",
+        phone=student.phone or current_user.phone or "",
+        school=(school_obj.name if school_obj else student.school) or "",
+        school_ru=(school_obj.name_ru if school_obj else "") or "",
+        district=(school_obj.district if school_obj else "") or "",
+        region=(school_obj.region if school_obj else "") or "",
+        status="pending",
+    )
+    db.add(new_product)
+    await db.flush()
+    await db.refresh(new_product)
+    return product_brief(new_product)
+
+
+@router.delete("/student-product/{product_id}")
+async def delete_my_student_product(
+    product_id: int,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """O'quvchi o'zining mahsulotini o'chiradi (faqat pending bo'lganda)."""
+    student = await student_crud.get_by_user(db, current_user.id)
+    if not student:
+        raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+    res = await db.execute(select(Product).where(Product.id == product_id))
+    product = res.scalar_one_or_none()
+    if not product or product.student_id != student.id:
+        raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
+    if product.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail="Faqat tasdiqlanmagan mahsulotni o'chira olasiz",
+        )
+    await db.delete(product)
+    await db.flush()
+    return {"success": True}

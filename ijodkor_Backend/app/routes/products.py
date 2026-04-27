@@ -62,6 +62,7 @@ def product_to_dict(p: Product, user: User = None, student: Student = None) -> d
         "rating":       p.rating,
         "reviews":      p.reviews,
         "sold":         p.sold,
+        "status":       p.status,
         "user_id":      p.user_id,
         "student_id":   p.student_id,
         # Muallif haqida
@@ -94,8 +95,10 @@ async def get_products(
     search:   Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hamma mahsulotlar — faqat stock > 0 bo'lganlari (asosiy sayt)"""
-    query = select(Product).where(Product.stock > 0)
+    """Hamma mahsulotlar — faqat stock > 0 va status='approved' bo'lganlari (asosiy sayt)"""
+    query = select(Product).where(
+        Product.stock > 0, Product.status == "approved"
+    )
     if category and category != "all":
         query = query.where(Product.category == category)
     if search:
@@ -336,13 +339,117 @@ async def delete_product(
     return {"success": True}
 
 
+@router.get("/pending/list")
+async def get_pending_products(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Maktab admini uchun — Telegram orqali yuklangan, hali tasdiqlanmagan mahsulotlar."""
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Faqat admin")
+
+    if current_user.role == "superadmin":
+        q = select(Product).where(Product.status == "pending")
+    elif current_user.school_id:
+        sub = select(Student.id).where(Student.school_id == current_user.school_id)
+        student_ids = [r[0] for r in (await db.execute(sub)).all()]
+        if not student_ids:
+            return []
+        q = select(Product).where(
+            Product.status == "pending",
+            Product.student_id.in_(student_ids),
+        )
+    else:
+        return []
+
+    q = q.order_by(Product.id.desc())
+    result = await db.execute(q)
+    products = result.scalars().all()
+
+    response = []
+    for p in products:
+        user, student = await _fetch_author_info(db, p)
+        response.append(product_to_dict(p, user, student))
+    return response
+
+
+@router.post("/{product_id}/approve")
+async def approve_product(
+    product_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Faqat admin")
+
+    product = await product_crud.get_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
+    if product.status != "pending":
+        raise HTTPException(
+            status_code=400, detail=f"Mahsulot allaqachon {product.status}"
+        )
+
+    # Maktab tekshiruvi (superadmin tashqarisida)
+    if current_user.role != "superadmin":
+        if not product.student_id:
+            raise HTTPException(status_code=403, detail="Ruxsat yo'q")
+        s = await db.execute(select(Student).where(Student.id == product.student_id))
+        student = s.scalar_one_or_none()
+        if not student or student.school_id != current_user.school_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Faqat o'z maktabingiz mahsulotlarini tasdiqlay olasiz",
+            )
+
+    product.status = "approved"
+    await db.flush()
+    await db.refresh(product)
+    return {"success": True, "id": product.id, "status": product.status}
+
+
+@router.post("/{product_id}/reject")
+async def reject_product(
+    product_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Faqat admin")
+
+    product = await product_crud.get_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
+    if product.status != "pending":
+        raise HTTPException(
+            status_code=400, detail=f"Mahsulot allaqachon {product.status}"
+        )
+
+    if current_user.role != "superadmin":
+        if not product.student_id:
+            raise HTTPException(status_code=403, detail="Ruxsat yo'q")
+        s = await db.execute(select(Student).where(Student.id == product.student_id))
+        student = s.scalar_one_or_none()
+        if not student or student.school_id != current_user.school_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Faqat o'z maktabingiz mahsulotlarini rad eta olasiz",
+            )
+
+    product.status = "rejected"
+    await db.flush()
+    await db.refresh(product)
+    return {"success": True, "id": product.id, "status": product.status}
+
+
 @router.get("/user/{user_id}")
 async def get_products_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    """Ma'lum user mahsulotlari — muallif sahifasi uchun"""
+    """Ma'lum user mahsulotlari — muallif sahifasi uchun (faqat tasdiqlangan)"""
     result = await db.execute(
         select(Product)
         .where(Product.user_id == user_id)
         .where(Product.stock > 0)
+        .where(Product.status == "approved")
         .order_by(Product.id.desc())
     )
     products = result.scalars().all()

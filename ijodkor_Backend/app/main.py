@@ -23,6 +23,8 @@ MIGRATION_SQL = [
     "ALTER TABLE students ALTER COLUMN admin_id DROP NOT NULL",
     # products — student_id ustun
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS student_id INTEGER REFERENCES students(id) ON DELETE CASCADE",
+    # products — Telegram orqali yuklangan mahsulotlarni tasdiqlash uchun
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved'",
 ]
 
 

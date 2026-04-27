@@ -1,26 +1,47 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import ProductForm from "./ProductForm.jsx";
 
 const formatPrice = (n) => (n || 0).toLocaleString("uz-UZ") + " so'm";
+
+const STATUS_BADGE = {
+  pending:  { label: "⏳ Tasdiq kutmoqda", bg: "#fef3c7", color: "#92400e" },
+  approved: { label: "✅ Tasdiqlangan",   bg: "#dcfce7", color: "#166534" },
+  rejected: { label: "❌ Rad etilgan",     bg: "#fee2e2", color: "#991b1b" },
+};
 
 export default function StudentCabinet({ user, student }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("profile");
+  const [showForm, setShowForm] = useState(false);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const list = await api.getMyStudentProducts();
+      setProducts(list);
+    } catch (err) {
+      console.error(err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!student?.id) return;
-    setLoading(true);
-    fetch(
-      `${
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api"
-      }/students/${student.id}/products`
-    )
-      .then((r) => r.json())
-      .then((list) => setProducts(Array.isArray(list) ? list : []))
-      .catch(() => setProducts([]))
-      .finally(() => setLoading(false));
-  }, [student?.id]);
+    loadProducts();
+  }, []);
+
+  const onDelete = async (id) => {
+    if (!confirm("Mahsulotni o'chirasizmi?")) return;
+    try {
+      await api.deleteMyStudentProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="app">
@@ -124,6 +145,19 @@ export default function StudentCabinet({ user, student }) {
           }}
         >
           🎨 Mahsulotlar
+          {products.length > 0 && (
+            <span
+              style={{
+                marginLeft: 6,
+                fontSize: 11,
+                background: tab === "products" ? "rgba(255,255,255,0.3)" : "#e5e7eb",
+                padding: "1px 7px",
+                borderRadius: 999,
+              }}
+            >
+              {products.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -142,7 +176,32 @@ export default function StudentCabinet({ user, student }) {
 
       {tab === "products" && (
         <div className="card">
-          <h2>Mening mahsulotlarim</h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <h2 style={{ margin: 0 }}>Mening mahsulotlarim</h2>
+            <button
+              onClick={() => setShowForm(true)}
+              style={{
+                background: "var(--tg-link)",
+                color: "#fff",
+                border: 0,
+                borderRadius: 10,
+                padding: "8px 14px",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              + Qo'shish
+            </button>
+          </div>
+
           {loading ? (
             <div className="spinner" />
           ) : products.length === 0 ? (
@@ -152,36 +211,125 @@ export default function StudentCabinet({ user, student }) {
                 Hozircha mahsulotlaringiz yo'q.
               </p>
               <p className="hint">
-                Yangi mahsulot qo'shish uchun maktab ma'muriyatiga murojaat
-                qiling.
+                Yuqoridagi <b>+ Qo'shish</b> tugmasini bosib mahsulot yuklang.
               </p>
             </div>
           ) : (
-            <div className="product-list">
-              {products.map((p) => (
-                <div key={p.id} className="product">
-                  {p.image ? (
-                    <img className="product-img" src={p.image} alt="" />
-                  ) : (
-                    <div
-                      className="product-img"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 28,
-                      }}
-                    >
-                      📦
+            <div style={{ display: "grid", gap: 10 }}>
+              {products.map((p) => {
+                const badge = STATUS_BADGE[p.status] || STATUS_BADGE.approved;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      padding: 10,
+                      background: "#f9fafb",
+                      borderRadius: 12,
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {p.image ? (
+                      <img
+                        src={p.image}
+                        alt=""
+                        style={{
+                          width: 70,
+                          height: 70,
+                          borderRadius: 10,
+                          objectFit: "cover",
+                          flexShrink: 0,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 70,
+                          height: 70,
+                          borderRadius: 10,
+                          background: "#e5e7eb",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 28,
+                          flexShrink: 0,
+                        }}
+                      >
+                        📦
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 14,
+                          marginBottom: 2,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {p.name_uz}
+                      </div>
+                      <div
+                        style={{
+                          color: "var(--tg-link)",
+                          fontWeight: 800,
+                          fontSize: 13,
+                        }}
+                      >
+                        {formatPrice(p.price)} · {p.stock} dona
+                      </div>
+                      <div
+                        style={{
+                          display: "inline-block",
+                          marginTop: 4,
+                          padding: "2px 8px",
+                          background: badge.bg,
+                          color: badge.color,
+                          borderRadius: 999,
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {badge.label}
+                      </div>
+                      {p.status === "pending" && (
+                        <button
+                          onClick={() => onDelete(p.id)}
+                          style={{
+                            marginLeft: 6,
+                            background: "transparent",
+                            border: "1px solid #fca5a5",
+                            color: "#dc2626",
+                            borderRadius: 999,
+                            padding: "1px 8px",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          🗑 O'chirish
+                        </button>
+                      )}
                     </div>
-                  )}
-                  <div className="product-name">{p.name_uz || p.nameUz}</div>
-                  <div className="product-price">{formatPrice(p.price)}</div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+      )}
+
+      {showForm && (
+        <ProductForm
+          onClose={() => setShowForm(false)}
+          onCreated={(p) => {
+            setProducts((prev) => [p, ...prev]);
+            setShowForm(false);
+          }}
+        />
       )}
     </div>
   );

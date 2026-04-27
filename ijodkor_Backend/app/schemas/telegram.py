@@ -32,3 +32,13 @@ class TelegramStudentRegister(BaseModel):
     grade:     str = ""      # sinf, masalan "4-A"
     school_id: int           # tanlangan maktab
     avatar:    str = ""      # base64 rasm
+
+
+class TelegramProductCreate(BaseModel):
+    """O'quvchi Mini App orqali mahsulot yuklashi"""
+    name_uz:  str            # nom
+    price:    float          # narx
+    stock:    int = 1        # soni
+    category: str = ""       # turi
+    image:    str = ""       # base64 rasm
+    desc_uz:  str = ""       # tavsif (ixtiyoriy)

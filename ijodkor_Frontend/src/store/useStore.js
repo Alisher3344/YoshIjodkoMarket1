@@ -418,6 +418,32 @@ const useStore = create((set, get) => ({
     await get().fetchPendingStudents();
   },
 
+  // Pending products (Telegram'dan kelgan)
+  pendingProducts: [],
+  fetchPendingProducts: async () => {
+    try {
+      const list = await api.getPendingProducts();
+      set({ pendingProducts: list });
+    } catch (err) {
+      console.error("fetchPendingProducts:", err.message);
+      set({ pendingProducts: [] });
+    }
+  },
+  approveProduct: async (id) => {
+    await api.approveProduct(id);
+    await get().fetchPendingProducts();
+    if (get().selectedStudent) {
+      await get().fetchStudentProducts(get().selectedStudent.id);
+    }
+  },
+  rejectProduct: async (id) => {
+    await api.rejectProduct(id);
+    await get().fetchPendingProducts();
+    if (get().selectedStudent) {
+      await get().fetchStudentProducts(get().selectedStudent.id);
+    }
+  },
+
   addStudent: async (data) => {
     await api.createStudent(data);
     await get().fetchMyStudents();
