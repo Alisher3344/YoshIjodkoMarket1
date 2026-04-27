@@ -101,4 +101,22 @@ export const api = {
   deleteStudent: (id) => request("DELETE", `/students/${id}`),
   toggleStudent: (id) => request("PATCH", `/students/${id}/toggle`),
   sendContact: (data) => request("POST", "/contact/", data),
+
+  // Schools (maktablar)
+  getSchools: () =>
+    request("GET", "/schools/").then((r) => ({
+      data: Array.isArray(r) ? r : [],
+    })),
+  getSchool: (id) => request("GET", `/schools/${id}`),
+  createSchool: (data) => request("POST", "/schools/", data),
+  updateSchool: (id, data) => request("PUT", `/schools/${id}`, data),
+  deleteSchool: (id) => request("DELETE", `/schools/${id}`),
+  getSchoolAdmins: (id) =>
+    request("GET", `/schools/${id}/admins`).then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  assignAdminToSchool: (schoolId, data) =>
+    request("POST", `/schools/${schoolId}/admins`, data),
+  detachAdminFromSchool: (schoolId, adminId) =>
+    request("DELETE", `/schools/${schoolId}/admins/${adminId}`),
 };

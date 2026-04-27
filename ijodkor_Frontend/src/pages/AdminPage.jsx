@@ -18,8 +18,12 @@ import {
   EyeOff,
   Search,
   KeyRound,
+  School,
+  UserPlus,
+  Building2,
 } from "lucide-react";
 import useStore from "../store/useStore";
+import { api } from "../services/api";
 import { formatPhone } from "../utils/phone";
 
 const EMPTY_FORM = {
@@ -74,6 +78,13 @@ export default function AdminPage() {
     editUser,
     deleteUser,
     toggleUserStatus,
+    schools,
+    fetchSchools,
+    addSchool,
+    editSchool,
+    removeSchool,
+    assignAdminToSchool,
+    detachAdminFromSchool,
   } = useStore();
 
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
@@ -90,6 +101,56 @@ export default function AdminPage() {
   const [pwdValue, setPwdValue] = useState("");
   const [pwdShow, setPwdShow] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
+
+  // School form (faqat asosiy fieldlar)
+  const EMPTY_SCHOOL = {
+    name: "",
+    name_ru: "",
+    district: "",
+    region: "Qashqadaryo viloyati",
+    phone: "",
+  };
+  const [showSchoolForm, setShowSchoolForm] = useState(false);
+  const [editSchoolId, setEditSchoolId] = useState(null);
+  const [schoolForm, setSchoolForm] = useState(EMPTY_SCHOOL);
+  const [schoolSearch, setSchoolSearch] = useState("");
+
+  // Maktab batafsil sahifa (inline, AdminPage ichida)
+  const [selectedSchoolId, setSelectedSchoolId] = useState(null);
+  const [schoolAdmins, setSchoolAdmins] = useState([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+
+  // Yangi admin biriktirish formasi
+  const [assignForm, setAssignForm] = useState({
+    name: "",
+    full_name: "",
+    phone: "+998 ",
+    username: "",
+    password: "",
+  });
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  // Yangi yaratilgan adminlarning plaintext parollari (faqat sessiyada)
+  // {[admin_id]: "qog'ozga yozish uchun parol"}
+  const [adminPasswords, setAdminPasswords] = useState({});
+
+  const selectedSchool =
+    selectedSchoolId != null
+      ? schools.find((s) => s.id === selectedSchoolId)
+      : null;
+
+  const loadSchoolAdmins = async (schoolId) => {
+    setAdminsLoading(true);
+    try {
+      const list = await api.getSchoolAdmins(schoolId);
+      setSchoolAdmins(list);
+    } catch (err) {
+      console.error("getSchoolAdmins:", err.message);
+      setSchoolAdmins([]);
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
   const [userForm, setUserForm] = useState({
     name: "",
     full_name: "",
@@ -111,6 +172,7 @@ export default function AdminPage() {
       }
       // SuperAdmin uchun — ma'lumotlarni yuklash
       if (currentUser?.role === "superadmin") {
+        fetchSchools();
         fetchProducts();
         fetchOrders();
         fetchCustomOrders();
@@ -329,7 +391,12 @@ export default function AdminPage() {
     {
       key: "users",
       icon: <Users size={18} />,
-      label: lang === "uz" ? "Adminlar" : "Администраторы",
+      label: lang === "uz" ? "Super adminlar" : "Супер админы",
+    },
+    {
+      key: "schools",
+      icon: <School size={18} />,
+      label: lang === "uz" ? "Maktablar" : "Школы",
     },
     {
       key: "customers",
@@ -753,7 +820,7 @@ export default function AdminPage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-black text-gray-900">
-                {lang === "uz" ? "Adminlar" : "Администраторы"}
+                {lang === "uz" ? "Super adminlar" : "Супер админы"}
               </h1>
               <button
                 onClick={() => {
@@ -764,7 +831,7 @@ export default function AdminPage() {
                     password: "",
                     phone: "",
                     school: "",
-                    role: "admin",
+                    role: "superadmin",
                   });
                   setEditUserId(null);
                   setShowUserForm(true);
@@ -778,16 +845,16 @@ export default function AdminPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               {(() => {
                 const adminList = users.filter(
-                  (u) => u.role === "admin" || u.role === "superadmin"
+                  (u) => u.role === "superadmin"
                 );
                 if (adminList.length === 0) {
                   return (
                     <div className="text-center py-20 text-gray-400">
-                      <div className="text-5xl mb-4">👥</div>
+                      <div className="text-5xl mb-4">👑</div>
                       <p>
                         {lang === "uz"
-                          ? "Adminlar yo'q"
-                          : "Нет администраторов"}
+                          ? "Super adminlar yo'q"
+                          : "Нет супер админов"}
                       </p>
                     </div>
                   );
@@ -1071,7 +1138,641 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {tab === "schools" && selectedSchool && (
+          <div>
+            {/* Orqaga + sarlavha */}
+            <div className="flex items-center gap-3 mb-6 flex-wrap">
+              <button
+                onClick={() => {
+                  setSelectedSchoolId(null);
+                  setSchoolAdmins([]);
+                }}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#1a56db] transition font-medium"
+              >
+                ← {lang === "uz" ? "Maktablar ro'yxati" : "К списку школ"}
+              </button>
+              <span className="text-gray-300">/</span>
+              <h1 className="text-xl md:text-2xl font-black text-gray-900">
+                🏫 {selectedSchool.name}
+              </h1>
+            </div>
+
+            {/* Maktab ma'lumotlari */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase mb-0.5">
+                    {lang === "uz" ? "Viloyat" : "Область"}
+                  </div>
+                  <div className="font-semibold text-gray-800">
+                    {selectedSchool.region || "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase mb-0.5">
+                    {lang === "uz" ? "Tuman" : "Район"}
+                  </div>
+                  <div className="font-semibold text-gray-800">
+                    {selectedSchool.district || "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase mb-0.5">
+                    {lang === "uz" ? "Telefon" : "Телефон"}
+                  </div>
+                  <div className="font-semibold text-gray-800 font-mono">
+                    {selectedSchool.phone || "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase mb-0.5">
+                    {lang === "uz" ? "Maktab ID" : "ID школы"}
+                  </div>
+                  <div className="font-semibold text-gray-800">#{selectedSchool.id}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Biriktirilgan adminlar */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-black text-gray-900">
+                  {lang === "uz"
+                    ? `Biriktirilgan adminlar (${schoolAdmins.length})`
+                    : `Привязанные админы (${schoolAdmins.length})`}
+                </h2>
+              </div>
+
+              {adminsLoading ? (
+                <div className="text-center py-6 text-sm text-gray-400">
+                  {lang === "uz" ? "Yuklanmoqda..." : "Загрузка..."}
+                </div>
+              ) : schoolAdmins.length === 0 ? (
+                <div className="text-center py-6 text-sm text-gray-400">
+                  {lang === "uz"
+                    ? "Hali admin biriktirilmagan"
+                    : "Админы пока не привязаны"}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {schoolAdmins.map((a) => (
+                    <div
+                      key={a.id}
+                      className="border border-gray-100 rounded-xl p-4 bg-gray-50/50"
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-3">
+                        <div>
+                          <div className="text-[11px] font-bold text-gray-400 uppercase mb-0.5">
+                            {lang === "uz" ? "Ism" : "Имя"}
+                          </div>
+                          <div className="font-semibold text-gray-800">
+                            {a.name || "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold text-gray-400 uppercase mb-0.5">
+                            {lang === "uz" ? "Familiya" : "Фамилия"}
+                          </div>
+                          <div className="font-semibold text-gray-800">
+                            {a.full_name || "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold text-gray-400 uppercase mb-0.5">
+                            {lang === "uz" ? "Telefon" : "Телефон"}
+                          </div>
+                          <div className="font-semibold text-gray-800 font-mono">
+                            {a.phone || "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold text-gray-400 uppercase mb-0.5">
+                            Username
+                          </div>
+                          <div className="font-semibold text-gray-800 font-mono">
+                            {a.username || "-"}
+                          </div>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="text-[11px] font-bold text-gray-400 uppercase mb-0.5">
+                            {lang === "uz" ? "Parol" : "Пароль"}
+                          </div>
+                          {adminPasswords[a.id] ? (
+                            <div className="flex items-center gap-2">
+                              <div className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg text-sm flex-1 break-all">
+                                {adminPasswords[a.id]}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(adminPasswords[a.id]);
+                                }}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-[#1a56db] hover:bg-blue-100 font-bold"
+                                title={lang === "uz" ? "Nusxa olish" : "Копировать"}
+                              >
+                                📋
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400 italic">
+                              {lang === "uz"
+                                ? "Parol shifrlangan. Yangi parol o'rnatish uchun pastdagi tugmadan foydalaning."
+                                : "Пароль зашифрован. Используйте кнопку ниже для сброса."}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setPwdResetUser(a);
+                            setPwdValue("");
+                            setPwdShow(false);
+                          }}
+                          className="flex-1 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold transition flex items-center justify-center gap-1"
+                        >
+                          <KeyRound size={13} />{" "}
+                          {lang === "uz" ? "Parolni o'zgartirish" : "Сменить пароль"}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (
+                              window.confirm(
+                                lang === "uz"
+                                  ? "Bu adminni maktabdan ajratasizmi?"
+                                  : "Отвязать админа?"
+                              )
+                            ) {
+                              try {
+                                await detachAdminFromSchool(selectedSchool.id, a.id);
+                                await loadSchoolAdmins(selectedSchool.id);
+                              } catch (err) {
+                                alert(err.message);
+                              }
+                            }
+                          }}
+                          className="py-2 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold transition flex items-center justify-center"
+                          title={lang === "uz" ? "Ajratish" : "Отвязать"}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Yangi admin biriktirish */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <UserPlus size={18} />
+                </div>
+                <h2 className="font-black text-gray-900">
+                  {lang === "uz" ? "Yangi admin biriktirish" : "Привязать нового админа"}
+                </h2>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      {lang === "uz" ? "Ism *" : "Имя *"}
+                    </label>
+                    <input
+                      type="text"
+                      value={assignForm.name}
+                      onChange={(e) =>
+                        setAssignForm({ ...assignForm, name: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      {lang === "uz" ? "Familiya" : "Фамилия"}
+                    </label>
+                    <input
+                      type="text"
+                      value={assignForm.full_name}
+                      onChange={(e) =>
+                        setAssignForm({ ...assignForm, full_name: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Telefon *" : "Телефон *"}
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={assignForm.phone}
+                    onChange={(e) =>
+                      setAssignForm({
+                        ...assignForm,
+                        phone: formatPhone(e.target.value),
+                      })
+                    }
+                    placeholder="+998 __ ___ __ __"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      {lang === "uz" ? "Username * (kirish uchun)" : "Username * (для входа)"}
+                    </label>
+                    <input
+                      type="text"
+                      value={assignForm.username}
+                      onChange={(e) =>
+                        setAssignForm({
+                          ...assignForm,
+                          username: e.target.value.trim(),
+                        })
+                      }
+                      placeholder={lang === "uz" ? "alisher_admin" : "ivan_admin"}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">
+                      {lang === "uz" ? "Parol *" : "Пароль *"}
+                    </label>
+                    <input
+                      type="text"
+                      value={assignForm.password}
+                      onChange={(e) =>
+                        setAssignForm({ ...assignForm, password: e.target.value })
+                      }
+                      placeholder={lang === "uz" ? "Kamida 6 belgi" : "Мин. 6 символов"}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  disabled={assignLoading}
+                  onClick={async () => {
+                    const phoneDigits = (assignForm.phone || "").replace(/\D/g, "");
+                    if (!assignForm.name.trim()) {
+                      alert(lang === "uz" ? "Ism shart" : "Имя обязательно");
+                      return;
+                    }
+                    if (phoneDigits.length !== 12) {
+                      alert(
+                        lang === "uz"
+                          ? "Telefon to'liq emas (+998 XX XXX XX XX)"
+                          : "Неполный телефон"
+                      );
+                      return;
+                    }
+                    if (!assignForm.username.trim()) {
+                      alert(
+                        lang === "uz"
+                          ? "Username kiritilishi shart"
+                          : "Username обязателен"
+                      );
+                      return;
+                    }
+                    if (assignForm.password.length < 6) {
+                      alert(
+                        lang === "uz" ? "Parol kamida 6 belgi" : "Пароль мин. 6"
+                      );
+                      return;
+                    }
+                    setAssignLoading(true);
+                    const plaintextPwd = assignForm.password;
+                    try {
+                      const created = await api.assignAdminToSchool(
+                        selectedSchool.id,
+                        {
+                          name: assignForm.name.trim(),
+                          full_name: assignForm.full_name.trim(),
+                          phone: assignForm.phone,
+                          username: assignForm.username.trim(),
+                          password: plaintextPwd,
+                        }
+                      );
+                      // Plaintext parolni state'da saqlash (faqat sessiyada)
+                      if (created?.id) {
+                        setAdminPasswords((p) => ({
+                          ...p,
+                          [created.id]: plaintextPwd,
+                        }));
+                      }
+                      await fetchSchools();
+                      await loadSchoolAdmins(selectedSchool.id);
+                      setAssignForm({
+                        name: "",
+                        full_name: "",
+                        phone: "+998 ",
+                        username: "",
+                        password: "",
+                      });
+                    } catch (err) {
+                      alert(err.message);
+                    } finally {
+                      setAssignLoading(false);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-[#1a56db] hover:bg-[#1341a8] disabled:bg-gray-300 text-white font-bold transition text-sm flex items-center justify-center gap-2"
+                >
+                  <UserPlus size={16} />
+                  {assignLoading
+                    ? lang === "uz"
+                      ? "Biriktirilmoqda..."
+                      : "Сохранение..."
+                    : lang === "uz"
+                    ? "Adminni biriktirish"
+                    : "Привязать админа"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "schools" && !selectedSchool && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <h1 className="text-2xl font-black text-gray-900">
+                {lang === "uz" ? "Maktablar" : "Школы"}
+              </h1>
+              <button
+                onClick={() => {
+                  setSchoolForm(EMPTY_SCHOOL);
+                  setEditSchoolId(null);
+                  setShowSchoolForm(true);
+                }}
+                className="flex items-center gap-2 bg-[#1a56db] text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-[#1341a8] transition"
+              >
+                <Plus size={18} />
+                {lang === "uz" ? "Maktab qo'shish" : "Добавить школу"}
+              </button>
+            </div>
+
+            {/* Qidiruv */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-4">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  value={schoolSearch}
+                  onChange={(e) => setSchoolSearch(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Maktab nomi, tuman yoki viloyat..."
+                      : "Название школы, район или область..."
+                  }
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db]"
+                />
+              </div>
+            </div>
+
+            {/* Maktablar grid */}
+            {(() => {
+              const q = schoolSearch.trim().toLowerCase();
+              const list = schools.filter((s) => {
+                if (!q) return true;
+                return (
+                  (s.name || "").toLowerCase().includes(q) ||
+                  (s.district || "").toLowerCase().includes(q) ||
+                  (s.region || "").toLowerCase().includes(q)
+                );
+              });
+
+              if (list.length === 0) {
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-20 text-gray-400">
+                    <div className="text-5xl mb-4">🏫</div>
+                    <p>
+                      {q
+                        ? lang === "uz"
+                          ? "Hech narsa topilmadi"
+                          : "Ничего не найдено"
+                        : lang === "uz"
+                        ? "Maktablar yo'q. \"Maktab qo'shish\" tugmasini bosing"
+                        : "Школ нет. Нажмите \"Добавить школу\""}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {list.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedSchoolId(s.id);
+                        loadSchoolAdmins(s.id);
+                      }}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-blue-200 transition flex flex-col cursor-pointer"
+                    >
+                      <div className="aspect-video bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center overflow-hidden relative">
+                        <Building2 size={56} className="text-blue-400" />
+                        {s.admin_count > 0 && (
+                          <span className="absolute top-2 right-2 bg-white/90 backdrop-blur text-xs font-bold text-gray-700 px-2 py-1 rounded-full">
+                            👤 {s.admin_count}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-4 flex-1 flex flex-col">
+                        <h3 className="font-black text-gray-900 mb-1 line-clamp-2">
+                          {s.name}
+                        </h3>
+                        {(s.district || s.region) && (
+                          <p className="text-xs text-gray-500 mb-2 line-clamp-1">
+                            📍 {[s.region, s.district].filter(Boolean).join(", ")}
+                          </p>
+                        )}
+                        {s.phone && (
+                          <p className="text-xs text-gray-500 mb-3 font-mono">
+                            📞 {s.phone}
+                          </p>
+                        )}
+
+                        <div className="mt-auto flex gap-2 pt-2 border-t border-gray-100">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSchoolForm({
+                                name: s.name,
+                                name_ru: s.name_ru || "",
+                                district: s.district || "",
+                                region: s.region || "Qashqadaryo viloyati",
+                                phone: s.phone || "",
+                              });
+                              setEditSchoolId(s.id);
+                              setShowSchoolForm(true);
+                            }}
+                            className="flex-1 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-bold transition flex items-center justify-center gap-1"
+                          >
+                            <Edit2 size={13} />{" "}
+                            {lang === "uz" ? "Tahrirlash" : "Изменить"}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                window.confirm(
+                                  lang === "uz"
+                                    ? `"${s.name}" maktabini o'chirishga ishonchingiz komilmi?`
+                                    : `Удалить школу "${s.name}"?`
+                                )
+                              ) {
+                                removeSchool(s.id);
+                              }
+                            }}
+                            className="py-2 px-3 rounded-lg border border-red-100 hover:bg-red-50 text-red-500 text-xs font-bold transition flex items-center justify-center"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </main>
+
+      {/* ── MAKTAB FORMASI (Modal) ── */}
+      {showSchoolForm && (
+        <div
+          onClick={() => setShowSchoolForm(false)}
+          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl my-8"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-[#1a56db] flex items-center justify-center">
+                  <Building2 size={18} />
+                </div>
+                <h2 className="font-black text-lg">
+                  {editSchoolId
+                    ? lang === "uz"
+                      ? "Maktabni tahrirlash"
+                      : "Редактировать школу"
+                    : lang === "uz"
+                    ? "Yangi maktab"
+                    : "Новая школа"}
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowSchoolForm(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Nom */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  {lang === "uz" ? "Maktab nomi *" : "Название школы *"}
+                </label>
+                <input
+                  type="text"
+                  value={schoolForm.name}
+                  onChange={(e) => setSchoolForm({ ...schoolForm, name: e.target.value })}
+                  placeholder={lang === "uz" ? "28-umumiy o'rta ta'lim maktabi" : "Школа №28"}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                />
+              </div>
+
+              {/* Tuman + Viloyat */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Tuman" : "Район"}
+                  </label>
+                  <input
+                    type="text"
+                    value={schoolForm.district}
+                    onChange={(e) => setSchoolForm({ ...schoolForm, district: e.target.value })}
+                    placeholder={lang === "uz" ? "Chiroqchi tumani" : "Чиракчинский"}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Viloyat" : "Область"}
+                  </label>
+                  <input
+                    type="text"
+                    value={schoolForm.region}
+                    onChange={(e) => setSchoolForm({ ...schoolForm, region: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  />
+                </div>
+              </div>
+
+              {/* Telefon */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  {lang === "uz" ? "Telefon" : "Телефон"}
+                </label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={schoolForm.phone}
+                  onChange={(e) =>
+                    setSchoolForm({ ...schoolForm, phone: formatPhone(e.target.value) })
+                  }
+                  placeholder="+998 __ ___ __ __"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t">
+              <button
+                onClick={() => setShowSchoolForm(false)}
+                className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition text-sm"
+              >
+                {lang === "uz" ? "Bekor" : "Отмена"}
+              </button>
+              <button
+                onClick={async () => {
+                  if (!schoolForm.name.trim()) {
+                    alert(lang === "uz" ? "Maktab nomi shart" : "Название обязательно");
+                    return;
+                  }
+                  try {
+                    if (editSchoolId) {
+                      await editSchool(editSchoolId, schoolForm);
+                    } else {
+                      await addSchool(schoolForm);
+                    }
+                    setShowSchoolForm(false);
+                    setEditSchoolId(null);
+                    setSchoolForm(EMPTY_SCHOOL);
+                  } catch (err) {
+                    alert(err.message);
+                  }
+                }}
+                className="flex-1 py-3 rounded-xl bg-[#1a56db] hover:bg-[#1341a8] text-white font-bold transition text-sm"
+              >
+                {lang === "uz" ? "Saqlash" : "Сохранить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PAROLNI O'ZGARTIRISH (Modal) ── */}
       {pwdResetUser && (
@@ -1161,6 +1862,15 @@ export default function AdminPage() {
                   setPwdLoading(true);
                   try {
                     await editUser(pwdResetUser.id, { password: pwdValue });
+                    // Parolni session-state ga yozish (school admin batafsil ko'rinishida ko'rinadi)
+                    setAdminPasswords((p) => ({
+                      ...p,
+                      [pwdResetUser.id]: pwdValue,
+                    }));
+                    // Agar maktab batafsil sahifasi ochiq bo'lsa, ro'yxatni qayta yuklash
+                    if (selectedSchoolId) {
+                      await loadSchoolAdmins(selectedSchoolId);
+                    }
                     setPwdResetUser(null);
                     setPwdValue("");
                     alert(

@@ -8,6 +8,7 @@ from ..crud import product as product_crud
 from ..models.product import Product
 from ..models.user import User
 from ..models.student import Student
+from ..models.school import School
 from ..schemas.product import ProductCreate
 
 router = APIRouter()
@@ -117,10 +118,24 @@ async def get_my_products(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """O'z kabinetdagi mahsulotlar — stock = 0 bo'lganlari ham ko'rinadi"""
-    result = await db.execute(
-        select(Product).where(Product.user_id == current_user.id).order_by(Product.id.desc())
-    )
+    """O'z kabinetdagi mahsulotlar — stock = 0 bo'lganlari ham ko'rinadi.
+    Agar admin maktabga biriktirilgan bo'lsa — shu maktabning hamma o'quvchilari mahsulotlarini ham qaytaradi
+    (bir maktab adminlari umumiy ma'lumot ko'radi)."""
+    if current_user.school_id:
+        # Maktab adminlari: o'zi yaratganlari + maktab studentlariga tegishli mahsulotlar
+        sub = select(Student.id).where(Student.school_id == current_user.school_id)
+        student_ids = [r[0] for r in (await db.execute(sub)).all()]
+        from sqlalchemy import or_
+        cond = or_(Product.user_id == current_user.id)
+        if student_ids:
+            cond = or_(cond, Product.student_id.in_(student_ids))
+        result = await db.execute(
+            select(Product).where(cond).order_by(Product.id.desc())
+        )
+    else:
+        result = await db.execute(
+            select(Product).where(Product.user_id == current_user.id).order_by(Product.id.desc())
+        )
     products = result.scalars().all()
 
     response = []
@@ -160,9 +175,19 @@ async def create_product(
         student = s_res.scalar_one_or_none()
         if not student:
             raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
-        # Admin bu o'quvchini o'zi yaratganini tekshirish
-        if student.admin_id != current_user.id and current_user.role != "superadmin":
-            raise HTTPException(status_code=403, detail="Bu sizning o'quvchingiz emas")
+        # Admin bu o'quvchini boshqara olishini tekshirish:
+        # superadmin / o'zi yaratgan / bir xil maktab adminlari ruxsat oladi
+        can = (
+            current_user.role == "superadmin"
+            or student.admin_id == current_user.id
+            or (
+                student.school_id is not None
+                and current_user.school_id is not None
+                and student.school_id == current_user.school_id
+            )
+        )
+        if not can:
+            raise HTTPException(status_code=403, detail="Bu sizning maktabingiz o'quvchisi emas")
 
         # Ma'lumotlarni student'dan to'ldirish
         if student.is_disabled:
@@ -174,14 +199,6 @@ async def create_product(
             d["author"] = student.full_name or student.name
         if not d.get("author_ru"):
             d["author_ru"] = student.name_ru or student.name
-        if not d.get("school"):
-            d["school"] = student.school or ""
-        if not d.get("school_ru"):
-            d["school_ru"] = student.school_ru or ""
-        if not d.get("district"):
-            d["district"] = student.district or ""
-        if not d.get("region"):
-            d["region"] = student.region or ""
         if not d.get("grade"):
             d["grade"] = student.grade or ""
         if not d.get("phone"):
@@ -190,6 +207,41 @@ async def create_product(
             d["photo"] = student.avatar or ""
         if student.illness_info and not d.get("story_uz"):
             d["story_uz"] = student.illness_info
+
+        # Maktab / Tuman / Viloyat — ustuvor ravishda admin'ning biriktirilgan maktabidan
+        # (student'da bo'lsa fallback)
+        school_obj = None
+        if current_user.school_id:
+            sch_res = await db.execute(
+                select(School).where(School.id == current_user.school_id)
+            )
+            school_obj = sch_res.scalar_one_or_none()
+
+        if not d.get("school"):
+            d["school"] = (
+                (school_obj.name if school_obj else None)
+                or student.school
+                or current_user.school
+                or ""
+            )
+        if not d.get("school_ru"):
+            d["school_ru"] = (
+                (school_obj.name_ru if school_obj else None)
+                or student.school_ru
+                or ""
+            )
+        if not d.get("district"):
+            d["district"] = (
+                (school_obj.district if school_obj else None)
+                or student.district
+                or ""
+            )
+        if not d.get("region"):
+            d["region"] = (
+                (school_obj.region if school_obj else None)
+                or student.region
+                or ""
+            )
     else:
         # Eski rejim — user o'zi mahsulot qo'shsa
         if current_user.is_disabled:
@@ -199,8 +251,27 @@ async def create_product(
 
         if not d.get("author"):
             d["author"] = current_user.full_name or current_user.name
+
+        # Admin'ning biriktirilgan maktabidan school/district/region (ustuvor)
+        school_obj = None
+        if current_user.school_id:
+            sch_res = await db.execute(
+                select(School).where(School.id == current_user.school_id)
+            )
+            school_obj = sch_res.scalar_one_or_none()
+
         if not d.get("school"):
-            d["school"] = current_user.school or ""
+            d["school"] = (
+                (school_obj.name if school_obj else None)
+                or current_user.school
+                or ""
+            )
+        if not d.get("school_ru") and school_obj:
+            d["school_ru"] = school_obj.name_ru or ""
+        if not d.get("district") and school_obj:
+            d["district"] = school_obj.district or ""
+        if not d.get("region") and school_obj:
+            d["region"] = school_obj.region or ""
 
         if current_user.avatar and not d.get("photo"):
             d["photo"] = current_user.avatar
@@ -214,6 +285,20 @@ async def create_product(
     return product_to_dict(product, current_user, student)
 
 
+async def _can_manage_product(db, product, user) -> bool:
+    if user.role == "superadmin":
+        return True
+    if product.user_id == user.id:
+        return True
+    # Bir maktab adminlari bir-birining mahsulotini boshqarishi mumkin
+    if product.student_id and user.school_id:
+        s = await db.execute(select(Student).where(Student.id == product.student_id))
+        student = s.scalar_one_or_none()
+        if student and student.school_id == user.school_id:
+            return True
+    return False
+
+
 @router.put("/{product_id}")
 async def update_product(
     product_id: int,
@@ -225,9 +310,8 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
 
-    is_admin = current_user.role in ("admin", "superadmin")
-    if product.user_id != current_user.id and not is_admin:
-        raise HTTPException(status_code=403, detail="Siz bu mahsulotning egasi emassiz")
+    if not await _can_manage_product(db, product, current_user):
+        raise HTTPException(status_code=403, detail="Siz bu mahsulotni boshqara olmaysiz")
 
     await product_crud.update(db, product, data)
 
@@ -245,9 +329,8 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Mahsulot topilmadi")
 
-    is_admin = current_user.role in ("admin", "superadmin")
-    if product.user_id != current_user.id and not is_admin:
-        raise HTTPException(status_code=403, detail="Siz bu mahsulotning egasi emassiz")
+    if not await _can_manage_product(db, product, current_user):
+        raise HTTPException(status_code=403, detail="Siz bu mahsulotni o'chira olmaysiz")
 
     await product_crud.delete(db, product)
     return {"success": True}

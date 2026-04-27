@@ -8,6 +8,7 @@ class Student(Base):
 
     id            = Column(Integer, primary_key=True, index=True)
     admin_id      = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    school_id     = Column(Integer, ForeignKey("schools.id", ondelete="SET NULL"), nullable=True, index=True)
     name          = Column(String(200), nullable=False)
     full_name     = Column(String(300), default="")
     name_ru       = Column(String(200), default="")

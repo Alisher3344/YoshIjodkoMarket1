@@ -24,9 +24,6 @@ const EMPTY_STUDENT = {
   grade: "",
   phone: "",
   avatar: "",
-  school: "",
-  district: "",
-  region: "Qashqadaryo viloyati",
   is_disabled: false,
   card_number: "",
   illness_info: "",
@@ -154,9 +151,6 @@ export default function DashboardPage() {
       grade: s.grade || "",
       phone: s.phone || "",
       avatar: s.avatar || "",
-      school: s.school || "",
-      district: s.district || "",
-      region: s.region || "Qashqadaryo viloyati",
       is_disabled: s.is_disabled || false,
       card_number: s.card_number || "",
       illness_info: s.illness_info || "",
@@ -243,16 +237,11 @@ export default function DashboardPage() {
         ? parseFloat(productForm.old_price)
         : null,
       stock: parseInt(productForm.stock) || 1,
-      // O'quvchi ma'lumotlari — card uchun kerak (cardda ko'rinadi)
+      // O'quvchi ma'lumotlari — faqat o'quvchining shaxsiy ma'lumotlari yuboriladi.
+      // Maktab / Tuman / Viloyat — backend admin'ning maktabidan avtomatik to'ldiradi.
       author: selectedStudent?.name || "",
       authorRu: selectedStudent?.name || "",
-      school: selectedStudent?.school || currentUser?.school || "",
-      schoolRu: selectedStudent?.school || currentUser?.school || "",
       grade: selectedStudent?.grade || "",
-      district: selectedStudent?.district || "",
-      districtRu: selectedStudent?.district || "",
-      region: selectedStudent?.region || "Qashqadaryo viloyati",
-      regionRu: selectedStudent?.region || "Кашкадарьинская область",
       phone: selectedStudent?.phone || "",
       studentType: selectedStudent?.is_disabled ? "disabled" : "normal",
       cardNumber: selectedStudent?.card_number || "",
@@ -619,18 +608,8 @@ export default function DashboardPage() {
                             </span>
                           )}
                         </div>
-                        {s.school && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                            🏫 {s.school}
-                          </p>
-                        )}
-                        {(s.district || s.region) && (
-                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
-                            📍 {[s.region, s.district].filter(Boolean).join(", ")}
-                          </p>
-                        )}
                         {s.phone && (
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-gray-500 mt-1">
                             📞 {s.phone}
                           </p>
                         )}
@@ -896,64 +875,6 @@ export default function DashboardPage() {
                     }
                     placeholder="+998 __ ___ __ __"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a56db] font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Maktab */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">
-                  {lang === "uz" ? "Maktab" : "Школа"}
-                </label>
-                <input
-                  type="text"
-                  value={studentForm.school}
-                  onChange={(e) =>
-                    setStudentForm({ ...studentForm, school: e.target.value })
-                  }
-                  placeholder={
-                    lang === "uz"
-                      ? "Masalan: 28-maktab"
-                      : "Например: 28-школа"
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a56db]"
-                />
-              </div>
-
-              {/* Tuman + Viloyat */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    {lang === "uz" ? "Tuman" : "Район"}
-                  </label>
-                  <input
-                    type="text"
-                    value={studentForm.district}
-                    onChange={(e) =>
-                      setStudentForm({
-                        ...studentForm,
-                        district: e.target.value,
-                      })
-                    }
-                    placeholder={lang === "uz" ? "Chiroqchi tumani" : "Чиракчинский район"}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a56db]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    {lang === "uz" ? "Viloyat" : "Область"}
-                  </label>
-                  <input
-                    type="text"
-                    value={studentForm.region}
-                    onChange={(e) =>
-                      setStudentForm({
-                        ...studentForm,
-                        region: e.target.value,
-                      })
-                    }
-                    placeholder="Qashqadaryo viloyati"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a56db]"
                   />
                 </div>
               </div>

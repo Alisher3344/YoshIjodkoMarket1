@@ -344,6 +344,44 @@ const useStore = create((set, get) => ({
     await get().fetchUsers();
   },
 
+  // Schools (maktablar)
+  schools: [],
+  schoolsLoading: false,
+  fetchSchools: async () => {
+    set({ schoolsLoading: true });
+    try {
+      const res = await api.getSchools();
+      set({ schools: res.data || [] });
+    } catch (err) {
+      console.error("fetchSchools:", err.message);
+      set({ schools: [] });
+    } finally {
+      set({ schoolsLoading: false });
+    }
+  },
+  addSchool: async (data) => {
+    await api.createSchool(data);
+    await get().fetchSchools();
+  },
+  editSchool: async (id, data) => {
+    await api.updateSchool(id, data);
+    await get().fetchSchools();
+  },
+  removeSchool: async (id) => {
+    await api.deleteSchool(id);
+    await get().fetchSchools();
+  },
+  assignAdminToSchool: async (schoolId, data) => {
+    await api.assignAdminToSchool(schoolId, data);
+    await get().fetchSchools();
+    if (typeof get().fetchUsers === "function") await get().fetchUsers();
+  },
+  detachAdminFromSchool: async (schoolId, adminId) => {
+    await api.detachAdminFromSchool(schoolId, adminId);
+    await get().fetchSchools();
+    if (typeof get().fetchUsers === "function") await get().fetchUsers();
+  },
+
   myStudents: [],
   studentProducts: [],
   selectedStudent: null,
