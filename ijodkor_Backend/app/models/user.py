@@ -22,5 +22,6 @@ class User(Base):
     avatar        = Column(Text,        default="")       # base64 rasm
     role          = Column(String(50),  default="student")
     active        = Column(Boolean,     default=True)
-    telegram_id   = Column(BigInteger, unique=True, index=True, nullable=True)
-    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+    telegram_id       = Column(BigInteger, unique=True, index=True, nullable=True)
+    telegram_username = Column(String(100), default="", nullable=True)
+    created_at        = Column(DateTime(timezone=True), server_default=func.now())

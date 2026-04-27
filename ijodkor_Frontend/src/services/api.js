@@ -105,6 +105,14 @@ export const api = {
     ),
   approveProduct: (id) => request("POST", `/products/${id}/approve`),
   rejectProduct: (id) => request("POST", `/products/${id}/reject`),
+
+  // Superadmin — barcha o'quvchilar maktablar bo'yicha
+  getAllStudentsGrouped: () =>
+    request("GET", "/students/all-grouped").then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  superadminDeleteStudent: (id) =>
+    request("DELETE", `/students/admin/${id}`),
   getStudent: (id) => request("GET", `/students/${id}`),
   getStudentProducts: (id) =>
     request("GET", `/students/${id}/products`).then((r) =>

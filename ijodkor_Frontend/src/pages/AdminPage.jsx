@@ -21,6 +21,7 @@ import {
   School,
   UserPlus,
   Building2,
+  GraduationCap,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import { api } from "../services/api";
@@ -85,7 +86,12 @@ export default function AdminPage() {
     removeSchool,
     assignAdminToSchool,
     detachAdminFromSchool,
+    allStudentsGrouped,
+    fetchAllStudentsGrouped,
+    superadminDeleteStudent,
   } = useStore();
+
+  const [allStudentsSearch, setAllStudentsSearch] = useState("");
 
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginErr, setLoginErr] = useState(false);
@@ -177,6 +183,7 @@ export default function AdminPage() {
         fetchOrders();
         fetchCustomOrders();
         fetchUsers();
+        fetchAllStudentsGrouped();
       }
     }
   }, [adminLoggedIn]);
@@ -397,6 +404,11 @@ export default function AdminPage() {
       key: "schools",
       icon: <School size={18} />,
       label: lang === "uz" ? "Maktablar" : "Школы",
+    },
+    {
+      key: "all-students",
+      icon: <GraduationCap size={18} />,
+      label: lang === "uz" ? "O'quvchilar" : "Ученики",
     },
     {
       key: "customers",
@@ -954,6 +966,255 @@ export default function AdminPage() {
                 );
               })()}
             </div>
+          </div>
+        )}
+
+        {tab === "all-students" && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-black text-gray-900">
+                  {lang === "uz"
+                    ? "Barcha o'quvchilar"
+                    : "Все ученики"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {lang === "uz"
+                    ? `Maktablar bo'yicha guruhlangan: ${allStudentsGrouped.reduce(
+                        (sum, g) => sum + (g.students?.length || 0),
+                        0
+                      )} ta o'quvchi`
+                    : `Сгруппировано по школам: ${allStudentsGrouped.reduce(
+                        (sum, g) => sum + (g.students?.length || 0),
+                        0
+                      )} учеников`}
+                </p>
+              </div>
+              <button
+                onClick={fetchAllStudentsGrouped}
+                className="text-sm text-gray-500 hover:text-[#1a56db]"
+              >
+                🔄 {lang === "uz" ? "Yangilash" : "Обновить"}
+              </button>
+            </div>
+
+            {/* Qidiruv */}
+            <div className="relative mb-5">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={allStudentsSearch}
+                onChange={(e) => setAllStudentsSearch(e.target.value)}
+                placeholder={
+                  lang === "uz"
+                    ? "Ism, familiya, username yoki maktab bo'yicha qidirish..."
+                    : "Поиск..."
+                }
+                className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] bg-white"
+              />
+              {allStudentsSearch && (
+                <button
+                  onClick={() => setAllStudentsSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const q = allStudentsSearch.toLowerCase().trim();
+              const filterStudent = (s) =>
+                !q ||
+                (s.name || "").toLowerCase().includes(q) ||
+                (s.full_name || "").toLowerCase().includes(q) ||
+                (s.telegram_username || "").toLowerCase().includes(q) ||
+                (s.phone || "").toLowerCase().includes(q) ||
+                (s.grade || "").toLowerCase().includes(q);
+              const groups = allStudentsGrouped
+                .map((g) => ({
+                  ...g,
+                  students: (g.students || []).filter(filterStudent),
+                }))
+                .filter(
+                  (g) =>
+                    g.students.length > 0 ||
+                    (!q &&
+                      (g.school_name || "").toLowerCase().includes(""))
+                );
+
+              if (groups.length === 0 || groups.every((g) => g.students.length === 0)) {
+                return (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
+                    <div className="text-5xl mb-4">🎓</div>
+                    <p className="font-semibold">
+                      {q
+                        ? lang === "uz"
+                          ? `"${allStudentsSearch}" bo'yicha topilmadi`
+                          : `Не найдено по "${allStudentsSearch}"`
+                        : lang === "uz"
+                        ? "Hozircha o'quvchilar yo'q"
+                        : "Пока нет учеников"}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {groups.map((g) => (
+                    <div
+                      key={g.school_id ?? "no-school"}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                    >
+                      <div className="bg-gradient-to-r from-[#1a56db] to-blue-600 text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <School size={18} />
+                            <h2 className="font-black text-lg">
+                              {g.school_name}
+                            </h2>
+                          </div>
+                          {g.district && (
+                            <p className="text-xs text-blue-100 mt-0.5">
+                              📍 {g.district}
+                            </p>
+                          )}
+                        </div>
+                        <span className="bg-white/20 text-white text-xs font-black rounded-full px-3 py-1">
+                          {g.students.length}{" "}
+                          {lang === "uz" ? "o'quvchi" : "учеников"}
+                        </span>
+                      </div>
+
+                      {g.students.length === 0 ? (
+                        <div className="p-6 text-center text-gray-400 text-sm">
+                          {lang === "uz"
+                            ? "O'quvchilar yo'q"
+                            : "Нет учеников"}
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100">
+                          {g.students.map((s) => (
+                            <div
+                              key={s.id}
+                              className="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 transition"
+                            >
+                              {s.avatar ? (
+                                <img
+                                  src={s.avatar}
+                                  alt=""
+                                  className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center font-black flex-shrink-0">
+                                  {s.name?.[0]?.toUpperCase() || "?"}
+                                </div>
+                              )}
+
+                              <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <div>
+                                  <div className="font-bold text-gray-900 truncate flex items-center gap-1.5">
+                                    {s.name}
+                                    {s.source === "telegram" ? (
+                                      <span
+                                        title={
+                                          lang === "uz"
+                                            ? "Telegram orqali"
+                                            : "Через Telegram"
+                                        }
+                                        className="text-[10px] bg-sky-100 text-sky-700 rounded px-1.5 py-0.5 font-bold"
+                                      >
+                                        TG
+                                      </span>
+                                    ) : (
+                                      <span
+                                        title={
+                                          lang === "uz"
+                                            ? "Admin yaratgan"
+                                            : "Создан админом"
+                                        }
+                                        className="text-[10px] bg-purple-100 text-purple-700 rounded px-1.5 py-0.5 font-bold"
+                                      >
+                                        ADMIN
+                                      </span>
+                                    )}
+                                    {s.status === "pending" && (
+                                      <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 font-bold">
+                                        ⏳
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {lang === "uz" ? "Ism" : "Имя"}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-bold text-gray-700 truncate">
+                                    {s.full_name || "—"}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {lang === "uz" ? "Familiya" : "Фамилия"}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-mono text-sm text-blue-600 truncate">
+                                    {s.telegram_username
+                                      ? `@${s.telegram_username}`
+                                      : s.phone || "—"}
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {s.telegram_username
+                                      ? "Telegram"
+                                      : lang === "uz"
+                                      ? "Telefon"
+                                      : "Телефон"}
+                                    {s.grade && (
+                                      <span className="ml-2 bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                                        {s.grade}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={async () => {
+                                  if (
+                                    !confirm(
+                                      lang === "uz"
+                                        ? `${s.name} ${s.full_name} ni bazadan butunlay o'chirasizmi?\n\nBu qaytarib bo'lmaydigan amal!`
+                                        : `Удалить ${s.name} ${s.full_name} из базы?\n\nЭто необратимо!`
+                                    )
+                                  )
+                                    return;
+                                  try {
+                                    await superadminDeleteStudent(s.id);
+                                  } catch (err) {
+                                    alert(err.message);
+                                  }
+                                }}
+                                className="p-2 rounded-lg text-red-500 hover:bg-red-50 border border-red-200 transition flex-shrink-0"
+                                title={
+                                  lang === "uz"
+                                    ? "O'quvchini bazadan o'chirish"
+                                    : "Удалить из базы"
+                                }
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 

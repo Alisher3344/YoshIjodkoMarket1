@@ -76,6 +76,9 @@ async def _get_or_create_tg_user(
         if last_name and not user.full_name:
             user.full_name = last_name
             changed = True
+        if tg_username and tg_username != (user.telegram_username or ""):
+            user.telegram_username = tg_username
+            changed = True
         if changed:
             await db.flush()
             await db.refresh(user)
@@ -124,6 +127,7 @@ async def _get_or_create_tg_user(
         role="user",
         active=True,
         telegram_id=telegram_id,
+        telegram_username=tg_username or "",
     )
     db.add(new_user)
     await db.flush()

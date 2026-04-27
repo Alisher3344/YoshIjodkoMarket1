@@ -444,6 +444,22 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // Superadmin — barcha o'quvchilar maktablar bo'yicha
+  allStudentsGrouped: [],
+  fetchAllStudentsGrouped: async () => {
+    try {
+      const list = await api.getAllStudentsGrouped();
+      set({ allStudentsGrouped: list });
+    } catch (err) {
+      console.error("fetchAllStudentsGrouped:", err.message);
+      set({ allStudentsGrouped: [] });
+    }
+  },
+  superadminDeleteStudent: async (id) => {
+    await api.superadminDeleteStudent(id);
+    await get().fetchAllStudentsGrouped();
+  },
+
   addStudent: async (data) => {
     await api.createStudent(data);
     await get().fetchMyStudents();
