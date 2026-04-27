@@ -26,6 +26,12 @@ import {
 import useStore from "../store/useStore";
 import { api } from "../services/api";
 import { formatPhone } from "../utils/phone";
+import {
+  COUNTRIES,
+  REGION_NAMES,
+  getCities,
+  getDistricts,
+} from "../data/uzbekistanRegions";
 
 const EMPTY_FORM = {
   name_uz: "",
@@ -92,6 +98,9 @@ export default function AdminPage() {
   } = useStore();
 
   const [allStudentsSearch, setAllStudentsSearch] = useState("");
+  const [allStudentsRegion, setAllStudentsRegion] = useState("");
+  const [allStudentsCity, setAllStudentsCity] = useState("");
+  const [allStudentsDistrict, setAllStudentsDistrict] = useState("");
 
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginErr, setLoginErr] = useState(false);
@@ -117,19 +126,27 @@ export default function AdminPage() {
   const [pwdValue, setPwdValue] = useState("");
   const [pwdShow, setPwdShow] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdUsername, setPwdUsername] = useState("");
 
   // School form (faqat asosiy fieldlar)
   const EMPTY_SCHOOL = {
     name: "",
     name_ru: "",
-    district: "",
+    country: "O'zbekiston",
     region: "Qashqadaryo viloyati",
+    city: "",
+    district: "",
     phone: "",
   };
   const [showSchoolForm, setShowSchoolForm] = useState(false);
   const [editSchoolId, setEditSchoolId] = useState(null);
   const [schoolForm, setSchoolForm] = useState(EMPTY_SCHOOL);
   const [schoolSearch, setSchoolSearch] = useState("");
+
+  // Maktablar ro'yxatini hududiy filtr bilan filtrlash
+  const [filterRegion, setFilterRegion] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterDistrict, setFilterDistrict] = useState("");
 
   // Maktab batafsil sahifa (inline, AdminPage ichida)
   const [selectedSchoolId, setSelectedSchoolId] = useState(null);
@@ -1008,29 +1025,100 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Qidiruv */}
-            <div className="relative mb-5">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                value={allStudentsSearch}
-                onChange={(e) => setAllStudentsSearch(e.target.value)}
-                placeholder={
-                  lang === "uz"
-                    ? "Ism, familiya, username yoki maktab bo'yicha qidirish..."
-                    : "Поиск..."
-                }
-                className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] bg-white"
-              />
-              {allStudentsSearch && (
-                <button
-                  onClick={() => setAllStudentsSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            {/* Qidiruv + Hududiy filtr */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-5 space-y-3">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={allStudentsSearch}
+                  onChange={(e) => setAllStudentsSearch(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Ism, familiya, username yoki maktab..."
+                      : "Поиск..."
+                  }
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] bg-white"
+                />
+                {allStudentsSearch && (
+                  <button
+                    onClick={() => setAllStudentsSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <select
+                  value={allStudentsRegion}
+                  onChange={(e) => {
+                    setAllStudentsRegion(e.target.value);
+                    setAllStudentsCity("");
+                    setAllStudentsDistrict("");
+                  }}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white"
                 >
-                  <X size={16} />
+                  <option value="">
+                    {lang === "uz" ? "Barcha viloyatlar" : "Все области"}
+                  </option>
+                  {REGION_NAMES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={allStudentsCity}
+                  onChange={(e) => setAllStudentsCity(e.target.value)}
+                  disabled={!allStudentsRegion}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">
+                    {lang === "uz" ? "Barcha shaharlar" : "Все города"}
+                  </option>
+                  {getCities(allStudentsRegion).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={allStudentsDistrict}
+                  onChange={(e) => setAllStudentsDistrict(e.target.value)}
+                  disabled={!allStudentsRegion}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">
+                    {lang === "uz" ? "Barcha tumanlar" : "Все районы"}
+                  </option>
+                  {getDistricts(allStudentsRegion).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(allStudentsRegion ||
+                allStudentsCity ||
+                allStudentsDistrict) && (
+                <button
+                  onClick={() => {
+                    setAllStudentsRegion("");
+                    setAllStudentsCity("");
+                    setAllStudentsDistrict("");
+                  }}
+                  className="text-xs text-[#1a56db] hover:underline"
+                >
+                  ✕{" "}
+                  {lang === "uz" ? "Filtrni tozalash" : "Сбросить фильтр"}
                 </button>
               )}
             </div>
@@ -1044,7 +1132,21 @@ export default function AdminPage() {
                 (s.telegram_username || "").toLowerCase().includes(q) ||
                 (s.phone || "").toLowerCase().includes(q) ||
                 (s.grade || "").toLowerCase().includes(q);
-              const allGroups = allStudentsGrouped.map((g) => {
+              // Avval hududiy filtr — maktab darajasida
+              const regionFiltered = allStudentsGrouped.filter((g) => {
+                if (allStudentsRegion && (g.region || "") !== allStudentsRegion)
+                  return false;
+                if (allStudentsCity && (g.city || "") !== allStudentsCity)
+                  return false;
+                if (
+                  allStudentsDistrict &&
+                  (g.district || "") !== allStudentsDistrict
+                )
+                  return false;
+                return true;
+              });
+
+              const allGroups = regionFiltered.map((g) => {
                 // Maktab nomi mos kelsa — shu maktabning hamma o'quvchilarini ko'rsatamiz
                 const schoolMatches =
                   q && (g.school_name || "").toLowerCase().includes(q);
@@ -1094,9 +1196,12 @@ export default function AdminPage() {
                               {g.school_name}
                             </h2>
                           </div>
-                          {g.district && (
+                          {(g.region || g.city || g.district) && (
                             <p className="text-xs text-blue-100 mt-0.5">
-                              📍 {g.district}
+                              📍{" "}
+                              {[g.region, g.city, g.district]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </p>
                           )}
                         </div>
@@ -1564,12 +1669,15 @@ export default function AdminPage() {
                           onClick={() => {
                             setPwdResetUser(a);
                             setPwdValue("");
+                            setPwdUsername("");
                             setPwdShow(false);
                           }}
                           className="flex-1 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold transition flex items-center justify-center gap-1"
                         >
                           <KeyRound size={13} />{" "}
-                          {lang === "uz" ? "Parolni o'zgartirish" : "Сменить пароль"}
+                          {lang === "uz"
+                            ? "Username/parolni tahrirlash"
+                            : "Логин/пароль"}
                         </button>
                         <button
                           onClick={async () => {
@@ -1794,8 +1902,8 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Qidiruv */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-4">
+            {/* Qidiruv + Hududiy filtr */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-4 space-y-3">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-3 text-gray-400" />
                 <input
@@ -1804,22 +1912,93 @@ export default function AdminPage() {
                   onChange={(e) => setSchoolSearch(e.target.value)}
                   placeholder={
                     lang === "uz"
-                      ? "Maktab nomi, tuman yoki viloyat..."
-                      : "Название школы, район или область..."
+                      ? "Maktab nomi yoki manzil..."
+                      : "Название школы или адрес..."
                   }
                   className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db]"
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <select
+                  value={filterRegion}
+                  onChange={(e) => {
+                    setFilterRegion(e.target.value);
+                    setFilterCity("");
+                    setFilterDistrict("");
+                  }}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white"
+                >
+                  <option value="">
+                    {lang === "uz" ? "Barcha viloyatlar" : "Все области"}
+                  </option>
+                  {REGION_NAMES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  disabled={!filterRegion}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">
+                    {lang === "uz" ? "Barcha shaharlar" : "Все города"}
+                  </option>
+                  {getCities(filterRegion).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterDistrict}
+                  onChange={(e) => setFilterDistrict(e.target.value)}
+                  disabled={!filterRegion}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">
+                    {lang === "uz" ? "Barcha tumanlar" : "Все районы"}
+                  </option>
+                  {getDistricts(filterRegion).map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(filterRegion || filterCity || filterDistrict) && (
+                <button
+                  onClick={() => {
+                    setFilterRegion("");
+                    setFilterCity("");
+                    setFilterDistrict("");
+                  }}
+                  className="text-xs text-[#1a56db] hover:underline"
+                >
+                  ✕ {lang === "uz" ? "Filtrni tozalash" : "Сбросить фильтр"}
+                </button>
+              )}
             </div>
 
             {/* Maktablar grid */}
             {(() => {
               const q = schoolSearch.trim().toLowerCase();
               const list = schools.filter((s) => {
+                if (filterRegion && (s.region || "") !== filterRegion) return false;
+                if (filterCity && (s.city || "") !== filterCity) return false;
+                if (filterDistrict && (s.district || "") !== filterDistrict)
+                  return false;
                 if (!q) return true;
                 return (
                   (s.name || "").toLowerCase().includes(q) ||
                   (s.district || "").toLowerCase().includes(q) ||
+                  (s.city || "").toLowerCase().includes(q) ||
                   (s.region || "").toLowerCase().includes(q)
                 );
               });
@@ -1883,8 +2062,10 @@ export default function AdminPage() {
                               setSchoolForm({
                                 name: s.name,
                                 name_ru: s.name_ru || "",
-                                district: s.district || "",
+                                country: s.country || "O'zbekiston",
                                 region: s.region || "Qashqadaryo viloyati",
+                                city: s.city || "",
+                                district: s.district || "",
                                 phone: s.phone || "",
                               });
                               setEditSchoolId(s.id);
@@ -1971,30 +2152,95 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Tuman + Viloyat */}
+              {/* Hududiy ierarxiya: Respublika → Viloyat → Shahar → Tuman */}
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Respublika" : "Страна"}
+                  </label>
+                  <select
+                    value={schoolForm.country}
+                    onChange={(e) =>
+                      setSchoolForm({ ...schoolForm, country: e.target.value })
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Viloyat *" : "Область *"}
+                  </label>
+                  <select
+                    value={schoolForm.region}
+                    onChange={(e) =>
+                      setSchoolForm({
+                        ...schoolForm,
+                        region: e.target.value,
+                        city: "",
+                        district: "",
+                      })
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
+                  >
+                    <option value="">— Tanlang —</option>
+                    {REGION_NAMES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    {lang === "uz" ? "Shahar" : "Город"}
+                  </label>
+                  <select
+                    value={schoolForm.city}
+                    onChange={(e) =>
+                      setSchoolForm({ ...schoolForm, city: e.target.value })
+                    }
+                    disabled={!schoolForm.region}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">— Yo'q —</option>
+                    {getCities(schoolForm.region).map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1">
                     {lang === "uz" ? "Tuman" : "Район"}
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={schoolForm.district}
-                    onChange={(e) => setSchoolForm({ ...schoolForm, district: e.target.value })}
-                    placeholder={lang === "uz" ? "Chiroqchi tumani" : "Чиракчинский"}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1">
-                    {lang === "uz" ? "Viloyat" : "Область"}
-                  </label>
-                  <input
-                    type="text"
-                    value={schoolForm.region}
-                    onChange={(e) => setSchoolForm({ ...schoolForm, region: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
-                  />
+                    onChange={(e) =>
+                      setSchoolForm({
+                        ...schoolForm,
+                        district: e.target.value,
+                      })
+                    }
+                    disabled={!schoolForm.region}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">— Yo'q —</option>
+                    {getDistricts(schoolForm.region).map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -2067,7 +2313,9 @@ export default function AdminPage() {
                   <KeyRound size={18} />
                 </div>
                 <h2 className="font-black text-lg">
-                  {lang === "uz" ? "Parolni o'zgartirish" : "Изменить пароль"}
+                  {lang === "uz"
+                    ? "Username va parolni tahrirlash"
+                    : "Изменить логин и пароль"}
                 </h2>
               </div>
               <button
@@ -2095,7 +2343,29 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1.5">
-                  {lang === "uz" ? "Yangi parol *" : "Новый пароль *"}
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={pwdUsername}
+                  onChange={(e) => setPwdUsername(e.target.value)}
+                  placeholder={
+                    lang === "uz"
+                      ? "Bo'sh qoldiring — o'zgarmaydi"
+                      : "Оставьте пустым — не изменится"
+                  }
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db] font-mono"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {lang === "uz"
+                    ? `Hozirgi: ${pwdResetUser.username || "-"}`
+                    : `Текущий: ${pwdResetUser.username || "-"}`}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Yangi parol" : "Новый пароль"}
                 </label>
                 <div className="relative">
                   <input
@@ -2103,10 +2373,10 @@ export default function AdminPage() {
                     value={pwdValue}
                     onChange={(e) => setPwdValue(e.target.value)}
                     placeholder={
-                      lang === "uz" ? "Kamida 6 ta belgi" : "Минимум 6 символов"
+                      lang === "uz"
+                        ? "Bo'sh qoldiring — o'zgarmaydi"
+                        : "Оставьте пустым — не изменится"
                     }
-                    minLength={6}
-                    autoFocus
                     className="w-full pr-10 px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#1a56db]"
                   />
                   <button
@@ -2119,8 +2389,8 @@ export default function AdminPage() {
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1">
                   {lang === "uz"
-                    ? "Mijozga yangi parolni o'zingiz xabar bering."
-                    : "Сообщите клиенту новый пароль самостоятельно."}
+                    ? "Kamida 6 ta belgi. Adminga yangi parolni xabar bering."
+                    : "Минимум 6 символов. Сообщите админу пароль."}
                 </p>
               </div>
             </div>
@@ -2134,26 +2404,63 @@ export default function AdminPage() {
                 {lang === "uz" ? "Bekor" : "Отмена"}
               </button>
               <button
-                disabled={pwdLoading || pwdValue.length < 6}
+                disabled={
+                  pwdLoading ||
+                  ((!pwdValue || pwdValue.length < 6) &&
+                    !pwdUsername.trim())
+                }
                 onClick={async () => {
+                  // Hech bo'lmaganda biri to'ldirilgan bo'lishi kerak
+                  const usernameChanged =
+                    pwdUsername.trim() &&
+                    pwdUsername.trim() !== pwdResetUser.username;
+                  const passwordChanged =
+                    pwdValue && pwdValue.length >= 6;
+
+                  if (!usernameChanged && !passwordChanged) {
+                    alert(
+                      lang === "uz"
+                        ? "Username yoki parolni o'zgartiring"
+                        : "Измените username или пароль"
+                    );
+                    return;
+                  }
+
                   setPwdLoading(true);
                   try {
-                    await editUser(pwdResetUser.id, { password: pwdValue });
-                    // Parolni session-state ga yozish (school admin batafsil ko'rinishida ko'rinadi)
-                    setAdminPasswords((p) => ({
-                      ...p,
-                      [pwdResetUser.id]: pwdValue,
-                    }));
-                    // Agar maktab batafsil sahifasi ochiq bo'lsa, ro'yxatni qayta yuklash
+                    const payload = {};
+                    if (usernameChanged) payload.username = pwdUsername.trim();
+                    if (passwordChanged) payload.password = pwdValue;
+
+                    if (selectedSchoolId) {
+                      // School admin uchun yangi endpoint (parolni to'g'ri hash qiladi)
+                      await api.updateSchoolAdmin(
+                        selectedSchoolId,
+                        pwdResetUser.id,
+                        payload
+                      );
+                    } else {
+                      // Boshqa userlar uchun fallback
+                      await editUser(pwdResetUser.id, payload);
+                    }
+
+                    if (passwordChanged) {
+                      setAdminPasswords((p) => ({
+                        ...p,
+                        [pwdResetUser.id]: pwdValue,
+                      }));
+                    }
+
                     if (selectedSchoolId) {
                       await loadSchoolAdmins(selectedSchoolId);
                     }
                     setPwdResetUser(null);
                     setPwdValue("");
+                    setPwdUsername("");
                     alert(
                       lang === "uz"
-                        ? "✅ Parol o'zgartirildi"
-                        : "✅ Пароль изменён"
+                        ? "✅ Saqlandi"
+                        : "✅ Сохранено"
                     );
                   } catch (err) {
                     alert(err.message || "Xatolik");

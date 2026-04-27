@@ -139,6 +139,8 @@ export const api = {
     ),
   assignAdminToSchool: (schoolId, data) =>
     request("POST", `/schools/${schoolId}/admins`, data),
+  updateSchoolAdmin: (schoolId, adminId, data) =>
+    request("PATCH", `/schools/${schoolId}/admins/${adminId}`, data),
   detachAdminFromSchool: (schoolId, adminId) =>
     request("DELETE", `/schools/${schoolId}/admins/${adminId}`),
 };
