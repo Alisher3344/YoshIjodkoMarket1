@@ -93,6 +93,11 @@ export default function AdminPage() {
 
   const [allStudentsSearch, setAllStudentsSearch] = useState("");
 
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginErr, setLoginErr] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [tab, setTab] = useState("dashboard");
+
   useEffect(() => {
     if (
       tab === "all-students" &&
@@ -102,11 +107,6 @@ export default function AdminPage() {
       fetchAllStudentsGrouped();
     }
   }, [tab, adminLoggedIn]);
-
-  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
-  const [loginErr, setLoginErr] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [tab, setTab] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
