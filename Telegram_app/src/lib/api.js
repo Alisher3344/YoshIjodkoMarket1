@@ -39,6 +39,15 @@ export const api = {
   me: () => request("GET", "/telegram/me"),
   updateProfile: (data) => request("PUT", "/telegram/profile", data),
 
+  // Student (o'quvchi) — ro'yxatdan o'tish
+  getStudentMe: () => request("GET", "/telegram/student-me"),
+  registerStudent: (data) =>
+    request("POST", "/telegram/student-register", data),
+
+  // Maktablar (ro'yxatdan o'tishda dropdown uchun)
+  getSchools: () =>
+    request("GET", "/schools/").then((r) => (Array.isArray(r) ? r : [])),
+
   // Mahsulotlar (asosiy backend bilan bir xil)
   getProducts: () =>
     request("GET", "/products/").then((r) => (Array.isArray(r) ? r : [])),

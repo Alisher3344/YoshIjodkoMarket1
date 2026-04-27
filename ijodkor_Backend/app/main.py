@@ -17,6 +17,10 @@ MIGRATION_SQL = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_id BIGINT UNIQUE",
     # students — school_id ustun (bir maktabga 2+ admin ulansa, ular bir xil studentlarni ko'rishadi)
     "ALTER TABLE students ADD COLUMN IF NOT EXISTS school_id INTEGER REFERENCES schools(id) ON DELETE SET NULL",
+    # students — Telegram orqali ro'yxatdan o'tish uchun ustunlar
+    "ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+    "ALTER TABLE students ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved'",
+    "ALTER TABLE students ALTER COLUMN admin_id DROP NOT NULL",
     # products — student_id ustun
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS student_id INTEGER REFERENCES students(id) ON DELETE CASCADE",
 ]
@@ -55,7 +59,9 @@ app.add_middleware(
         "https://www.yoshijodkor.uz",
         "https://t.yoshijodkor.uz",   # Mini App subdomeni (taklif)
         "https://miniapp.yoshijodkor.uz",
+        "https://yosh-ijodko-market1.vercel.app",  # Vercel Mini App
     ],
+    allow_origin_regex=r"https://yosh-ijodko-market1-.*\.vercel\.app",  # Vercel preview deploylari
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

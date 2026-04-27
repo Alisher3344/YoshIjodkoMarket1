@@ -57,10 +57,81 @@ async def my_students(
     db: AsyncSession = Depends(get_db),
 ):
     """Agar admin maktabga biriktirilgan bo'lsa — shu maktabning hamma o'quvchilarini qaytaradi.
-    Aks holda — faqat o'zi yaratgan o'quvchilarini (eski adminlar uchun)."""
+    Aks holda — faqat o'zi yaratgan o'quvchilarini (eski adminlar uchun).
+    Faqat status='approved' o'quvchilar."""
     if current_user.school_id:
         return await student_crud.get_by_school(db, current_user.school_id)
     return await student_crud.get_by_admin(db, current_user.id)
+
+
+@router.get("/pending/list")
+async def pending_students(
+    current_user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Maktab admini uchun — Telegram orqali ariza yuborgan, hali tasdiqlanmagan o'quvchilar."""
+    if not current_user.school_id:
+        return []
+    return await student_crud.get_pending_by_school(db, current_user.school_id)
+
+
+@router.post("/{student_id}/approve")
+async def approve_student(
+    student_id: int,
+    current_user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await student_crud.get_by_id(db, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+    if student.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"O'quvchi allaqachon {student.status}",
+        )
+    if (
+        current_user.role != "superadmin"
+        and student.school_id != current_user.school_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Faqat o'z maktabingizning arizalarini tasdiqlay olasiz",
+        )
+    updated = await student_crud.approve(db, student, admin_id=current_user.id)
+    return {"success": True, "student": {
+        "id": updated.id,
+        "name": updated.name,
+        "status": updated.status,
+    }}
+
+
+@router.post("/{student_id}/reject")
+async def reject_student(
+    student_id: int,
+    current_user=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    student = await student_crud.get_by_id(db, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+    if student.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"O'quvchi allaqachon {student.status}",
+        )
+    if (
+        current_user.role != "superadmin"
+        and student.school_id != current_user.school_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Faqat o'z maktabingizning arizalarini rad etishingiz mumkin",
+        )
+    updated = await student_crud.reject(db, student)
+    return {"success": True, "student": {
+        "id": updated.id,
+        "status": updated.status,
+    }}
 
 
 @router.post("/")

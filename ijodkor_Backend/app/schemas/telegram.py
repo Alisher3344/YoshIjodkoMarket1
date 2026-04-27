@@ -23,3 +23,12 @@ class TelegramProfileUpdate(BaseModel):
     """Mini App ichida foydalanuvchi ism/familiya kiritganda"""
     name:      Optional[str] = None
     full_name: Optional[str] = None
+
+
+class TelegramStudentRegister(BaseModel):
+    """O'quvchi Mini App orqali ro'yxatdan o'tishi"""
+    name:      str           # ism
+    full_name: str = ""      # familiya
+    grade:     str = ""      # sinf, masalan "4-A"
+    school_id: int           # tanlangan maktab
+    avatar:    str = ""      # base64 rasm

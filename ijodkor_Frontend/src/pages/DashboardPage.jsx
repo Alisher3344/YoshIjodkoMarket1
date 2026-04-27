@@ -15,6 +15,8 @@ import {
   Heart,
   ImageIcon,
   Home,
+  UserPlus,
+  XCircle,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import { formatPhone } from "../utils/phone";
@@ -62,6 +64,10 @@ export default function DashboardPage() {
     addProductForStudent,
     editProductForStudent,
     deleteProductForStudent,
+    pendingStudents,
+    fetchPendingStudents,
+    approveStudent,
+    rejectStudent,
   } = useStore();
 
   const [tab, setTab] = useState("profile");
@@ -109,6 +115,7 @@ export default function DashboardPage() {
     });
 
     fetchMyStudents();
+    fetchPendingStudents();
   }, [adminLoggedIn]);
 
   const handleImageUpload = (e, callback) => {
@@ -350,6 +357,26 @@ export default function DashboardPage() {
             {myStudents.length > 0 && (
               <span className="ml-auto text-xs bg-gray-200 text-gray-700 rounded-full px-2 py-0.5">
                 {myStudents.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setTab("pending");
+              setSelectedStudent(null);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+              tab === "pending"
+                ? "bg-[#1a56db] text-white"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <UserPlus size={18} />
+            {lang === "uz" ? "Yangi o'quvchilar" : "Новые ученики"}
+            {pendingStudents.length > 0 && (
+              <span className="ml-auto text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5 font-black">
+                {pendingStudents.length}
               </span>
             )}
           </button>
@@ -635,6 +662,127 @@ export default function DashboardPage() {
                         className="p-2 rounded-lg hover:bg-red-50 text-red-500 border border-gray-200 transition"
                       >
                         <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PENDING STUDENTS — Telegram orqali ariza yuborganlar */}
+        {tab === "pending" && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-black text-gray-900">
+                  {lang === "uz" ? "Yangi o'quvchilar" : "Новые ученики"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {lang === "uz"
+                    ? `Telegram orqali ariza yuborgan: ${pendingStudents.length} ta`
+                    : `Заявок через Telegram: ${pendingStudents.length}`}
+                </p>
+              </div>
+              <button
+                onClick={fetchPendingStudents}
+                className="text-sm text-gray-500 hover:text-[#1a56db] transition"
+              >
+                🔄 {lang === "uz" ? "Yangilash" : "Обновить"}
+              </button>
+            </div>
+
+            {pendingStudents.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
+                <div className="text-5xl mb-4">📭</div>
+                <p className="font-semibold">
+                  {lang === "uz"
+                    ? "Yangi arizalar yo'q"
+                    : "Нет новых заявок"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pendingStudents.map((s) => (
+                  <div
+                    key={s.id}
+                    className="bg-white rounded-2xl shadow-sm border-2 border-amber-200 p-5"
+                  >
+                    <div className="flex items-start gap-3 mb-4">
+                      {s.avatar ? (
+                        <img
+                          src={s.avatar}
+                          alt=""
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center font-black text-xl">
+                          {s.name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-gray-900 truncate">
+                          {s.name} {s.full_name}
+                        </h3>
+                        {s.grade && (
+                          <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg font-bold mt-1">
+                            🎓 {s.grade}-sinf
+                          </span>
+                        )}
+                        {s.phone && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            📞 {s.phone}
+                          </p>
+                        )}
+                        <span className="inline-block text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg font-bold mt-2">
+                          ⏳ {lang === "uz" ? "Tasdiq kutmoqda" : "Ожидает"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              lang === "uz"
+                                ? `${s.name} ni tasdiqlaysizmi?`
+                                : `Подтвердить ${s.name}?`
+                            )
+                          )
+                            return;
+                          try {
+                            await approveStudent(s.id);
+                          } catch (err) {
+                            alert(err.message);
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-bold text-xs transition"
+                      >
+                        <Check size={14} />
+                        {lang === "uz" ? "Tasdiqlash" : "Одобрить"}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              lang === "uz"
+                                ? `${s.name} arizasini rad etasizmi?`
+                                : `Отклонить заявку ${s.name}?`
+                            )
+                          )
+                            return;
+                          try {
+                            await rejectStudent(s.id);
+                          } catch (err) {
+                            alert(err.message);
+                          }
+                        }}
+                        className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-2 px-3 rounded-lg font-bold text-xs transition"
+                      >
+                        <XCircle size={14} />
+                        {lang === "uz" ? "Rad etish" : "Отклонить"}
                       </button>
                     </div>
                   </div>

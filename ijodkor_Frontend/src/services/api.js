@@ -91,6 +91,12 @@ export const api = {
     request("GET", "/students/my/list").then((r) => ({
       data: Array.isArray(r) ? r : [],
     })),
+  getPendingStudents: () =>
+    request("GET", "/students/pending/list").then((r) =>
+      Array.isArray(r) ? r : []
+    ),
+  approveStudent: (id) => request("POST", `/students/${id}/approve`),
+  rejectStudent: (id) => request("POST", `/students/${id}/reject`),
   getStudent: (id) => request("GET", `/students/${id}`),
   getStudentProducts: (id) =>
     request("GET", `/students/${id}/products`).then((r) =>

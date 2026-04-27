@@ -20,12 +20,16 @@ from ..core.security import (
     hash_password,
 )
 from ..models.user import User
+from ..models.student import Student
+from ..models.school import School
 from ..schemas.telegram import (
     TelegramBotAuth,
     TelegramWebAppAuth,
     TelegramProfileUpdate,
+    TelegramStudentRegister,
 )
 from ..utils.telegram import verify_webapp_init_data
+from ..crud import student as student_crud
 
 router = APIRouter()
 
@@ -214,3 +218,96 @@ async def update_profile(
 @router.get("/me")
 async def me(current_user=Depends(get_current_user)):
     return user_dict(current_user)
+
+
+# ─── O'quvchi (Student) — Telegram Mini App ro'yxati ─────────────────────────
+
+def student_dict(s: Student) -> dict:
+    return {
+        "id":        s.id,
+        "name":      s.name or "",
+        "full_name": s.full_name or "",
+        "grade":     s.grade or "",
+        "avatar":    s.avatar or "",
+        "school_id": s.school_id,
+        "status":    s.status,
+        "active":    s.active,
+    }
+
+
+@router.get("/student-me")
+async def get_my_student(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mini App ochilganda chaqiriladi.
+    Qaytaradi: {status: 'pending'|'approved'|'rejected'|null, student: {...} | null}
+    null bo'lsa — foydalanuvchi hali ariza yubormagan, ro'yxatdan o'tish formasi ko'rsatiladi.
+    """
+    student = await student_crud.get_by_user(db, current_user.id)
+    if not student:
+        return {"status": None, "student": None}
+    return {
+        "status":  student.status,
+        "student": student_dict(student),
+    }
+
+
+@router.post("/student-register")
+async def register_student(
+    data: TelegramStudentRegister,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """O'quvchi ariza yuboradi. status='pending' qilinadi.
+    Maktab admini tasdiqlaganda 'approved' bo'ladi."""
+    if not data.name.strip():
+        raise HTTPException(status_code=400, detail="Ism kiritilishi shart")
+    if not data.school_id:
+        raise HTTPException(status_code=400, detail="Maktabni tanlang")
+
+    # Maktab mavjudligini tekshirish
+    res = await db.execute(select(School).where(School.id == data.school_id))
+    school = res.scalar_one_or_none()
+    if not school:
+        raise HTTPException(status_code=404, detail="Maktab topilmadi")
+
+    # Avval ariza yuborganmi?
+    existing = await student_crud.get_by_user(db, current_user.id)
+    if existing:
+        if existing.status == "pending":
+            raise HTTPException(
+                status_code=409,
+                detail="Arizangiz allaqachon yuborilgan, kuting",
+            )
+        if existing.status == "approved":
+            raise HTTPException(
+                status_code=409,
+                detail="Siz allaqachon ro'yxatdan o'tgansiz",
+            )
+        if existing.status == "rejected":
+            raise HTTPException(
+                status_code=409,
+                detail="Arizangiz rad etilgan. Maktab ma'muriyati bilan bog'laning.",
+            )
+
+    new_student = Student(
+        user_id=current_user.id,
+        admin_id=None,
+        school_id=data.school_id,
+        school=school.name,
+        name=data.name.strip(),
+        full_name=data.full_name.strip(),
+        grade=data.grade.strip(),
+        avatar=data.avatar or "",
+        phone=current_user.phone or "",
+        status="pending",
+        active=False,  # tasdiqlanguncha sayt'da ko'rinmaydi
+    )
+    db.add(new_student)
+    await db.flush()
+    await db.refresh(new_student)
+    return {
+        "status":  new_student.status,
+        "student": student_dict(new_student),
+    }

@@ -385,6 +385,7 @@ const useStore = create((set, get) => ({
   myStudents: [],
   studentProducts: [],
   selectedStudent: null,
+  pendingStudents: [],
 
   fetchMyStudents: async () => {
     try {
@@ -394,6 +395,27 @@ const useStore = create((set, get) => ({
       console.error("fetchMyStudents:", err.message);
       set({ myStudents: [] });
     }
+  },
+
+  fetchPendingStudents: async () => {
+    try {
+      const list = await api.getPendingStudents();
+      set({ pendingStudents: list });
+    } catch (err) {
+      console.error("fetchPendingStudents:", err.message);
+      set({ pendingStudents: [] });
+    }
+  },
+
+  approveStudent: async (id) => {
+    await api.approveStudent(id);
+    await get().fetchPendingStudents();
+    await get().fetchMyStudents();
+  },
+
+  rejectStudent: async (id) => {
+    await api.rejectStudent(id);
+    await get().fetchPendingStudents();
   },
 
   addStudent: async (data) => {
