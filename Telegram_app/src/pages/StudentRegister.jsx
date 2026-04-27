@@ -14,10 +14,9 @@ export default function StudentRegister({ user, onRegistered }) {
   const [grade, setGrade] = useState("");
   const [avatar, setAvatar] = useState("");
 
-  // Hududiy tanlov
+  // Hududiy tanlov — 2 ta alohida input
   const [region, setRegion] = useState("");
-  // location: {type: "city"|"district", value: "..."}
-  const [location, setLocation] = useState(null);
+  const [district, setDistrict] = useState(""); // shahar yoki tuman — bitta input
   const [schoolId, setSchoolId] = useState("");
 
   const [schools, setSchools] = useState([]);
@@ -35,16 +34,30 @@ export default function StudentRegister({ user, onRegistered }) {
 
   const availability = useMemo(() => buildAvailability(schools), [schools]);
 
-  // Tanlangan viloyat va hududga mos maktablar
-  const filteredSchools = useMemo(() => {
+  // Viloyat tanlanganda — shahar+tumanlar bitta flat ro'yxatda
+  const districtOptions = useMemo(() => {
     if (!region) return [];
-    return schools.filter((s) => {
-      if (s.region !== region) return false;
-      if (location?.type === "city") return s.city === location.value;
-      if (location?.type === "district") return s.district === location.value;
-      return false;
-    });
-  }, [schools, region, location]);
+    const cities = getCities(region).map((c) => ({
+      value: c,
+      label: `🏙 ${c}`,
+      enabled: availability.hasCity(region, c),
+    }));
+    const districts = getDistricts(region).map((d) => ({
+      value: d,
+      label: `🏞 ${d}`,
+      enabled: availability.hasDistrict(region, d),
+    }));
+    return [...cities, ...districts];
+  }, [region, availability]);
+
+  // Tanlangan hudud bo'yicha maktablar
+  const filteredSchools = useMemo(() => {
+    if (!region || !district) return [];
+    return schools.filter(
+      (s) =>
+        s.region === region && (s.city === district || s.district === district)
+    );
+  }, [schools, region, district]);
 
   const onAvatarUpload = (e) => {
     const file = e.target.files?.[0];
@@ -73,7 +86,7 @@ export default function StudentRegister({ user, onRegistered }) {
       haptic.error();
       return setError("Viloyatni tanlang");
     }
-    if (!location) {
+    if (!district) {
       haptic.error();
       return setError("Shahar yoki tumanni tanlang");
     }
@@ -200,7 +213,7 @@ export default function StudentRegister({ user, onRegistered }) {
             />
           </div>
 
-          {/* Viloyat tanlash */}
+          {/* ─── 1-input: Viloyat ─────────────────────────────────── */}
           <div className="field">
             <label className="label">Viloyatingiz *</label>
             {loadingSchools ? (
@@ -211,12 +224,12 @@ export default function StudentRegister({ user, onRegistered }) {
                 value={region}
                 onChange={(e) => {
                   setRegion(e.target.value);
-                  setLocation(null);
+                  setDistrict("");
                   setSchoolId("");
                   haptic.select();
                 }}
               >
-                <option value="">— Tanlang —</option>
+                <option value="">— Viloyatni tanlang —</option>
                 {REGION_NAMES.map((r) => {
                   const enabled = availability.hasRegion(r);
                   return (
@@ -236,108 +249,91 @@ export default function StudentRegister({ user, onRegistered }) {
               </select>
             )}
             <p className="hint" style={{ marginTop: 6, marginBottom: 0 }}>
-              Hozircha faqat maktablar biriktirilgan viloyatlarni tanlay olasiz.
+              Hozircha faqat maktablari bo'lgan viloyatlarni tanlay olasiz.
             </p>
           </div>
 
-          {/* Shahar / Tuman tanlash */}
-          {region && (
-            <div className="field">
-              <label className="label">Shahar yoki tuman *</label>
+          {/* ─── 2-input: Shahar/Tuman ─────────────────────────────── */}
+          <div className="field">
+            <label className="label">Shahar yoki tuman *</label>
+            <select
+              className="input"
+              value={district}
+              onChange={(e) => {
+                setDistrict(e.target.value);
+                setSchoolId("");
+                haptic.select();
+              }}
+              disabled={!region}
+              style={{ opacity: region ? 1 : 0.5 }}
+            >
+              <option value="">
+                {region
+                  ? "— Shahar yoki tumanni tanlang —"
+                  : "— Avval viloyatni tanlang —"}
+              </option>
+              {districtOptions.map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={!opt.enabled}
+                  style={{ color: opt.enabled ? "inherit" : "#9ca3af" }}
+                >
+                  {opt.label}
+                  {!opt.enabled ? "  (maktab yo'q)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ─── 3-input: Maktab ──────────────────────────────────── */}
+          <div className="field">
+            <label className="label">Maktab *</label>
+            {!region || !district ? (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  border: "1px dashed #e5e7eb",
+                  borderRadius: 12,
+                  color: "#9ca3af",
+                  fontSize: 13,
+                  textAlign: "center",
+                  background: "#fafafa",
+                }}
+              >
+                Avval viloyat va tumanni tanlang
+              </div>
+            ) : filteredSchools.length === 0 ? (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  border: "1px dashed #e5e7eb",
+                  borderRadius: 12,
+                  color: "#9ca3af",
+                  fontSize: 13,
+                  textAlign: "center",
+                }}
+              >
+                Bu hududda maktab topilmadi
+              </div>
+            ) : (
               <select
                 className="input"
-                value={location ? `${location.type}:${location.value}` : ""}
+                value={schoolId}
                 onChange={(e) => {
-                  const v = e.target.value;
-                  if (!v) {
-                    setLocation(null);
-                  } else {
-                    const [type, ...rest] = v.split(":");
-                    setLocation({ type, value: rest.join(":") });
-                  }
-                  setSchoolId("");
+                  setSchoolId(e.target.value);
                   haptic.select();
                 }}
               >
-                <option value="">— Tanlang —</option>
-
-                {getCities(region).length > 0 && (
-                  <optgroup label="🏙 Shaharlar">
-                    {getCities(region).map((c) => {
-                      const enabled = availability.hasCity(region, c);
-                      return (
-                        <option
-                          key={c}
-                          value={`city:${c}`}
-                          disabled={!enabled}
-                          style={{ color: enabled ? "inherit" : "#9ca3af" }}
-                        >
-                          {c}
-                          {!enabled ? "  (maktab yo'q)" : ""}
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                )}
-
-                {getDistricts(region).length > 0 && (
-                  <optgroup label="🏞 Tumanlar">
-                    {getDistricts(region).map((d) => {
-                      const enabled = availability.hasDistrict(region, d);
-                      return (
-                        <option
-                          key={d}
-                          value={`district:${d}`}
-                          disabled={!enabled}
-                          style={{ color: enabled ? "inherit" : "#9ca3af" }}
-                        >
-                          {d}
-                          {!enabled ? "  (maktab yo'q)" : ""}
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                )}
+                <option value="">— Maktabni tanlang —</option>
+                {filteredSchools.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
-            </div>
-          )}
-
-          {/* Maktab tanlash */}
-          {region && location && (
-            <div className="field">
-              <label className="label">Maktab *</label>
-              {filteredSchools.length === 0 ? (
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    border: "1px dashed #e5e7eb",
-                    borderRadius: 12,
-                    color: "#9ca3af",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Bu hududda maktab topilmadi
-                </div>
-              ) : (
-                <select
-                  className="input"
-                  value={schoolId}
-                  onChange={(e) => {
-                    setSchoolId(e.target.value);
-                    haptic.select();
-                  }}
-                >
-                  <option value="">— Tanlang —</option>
-                  {filteredSchools.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           {user?.phone && (
             <div className="field" style={{ marginBottom: 0 }}>
