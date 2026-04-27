@@ -292,7 +292,12 @@ const useStore = create((set, get) => ({
     });
   },
   updateOrderStatus: async (id, status) => {
-    await api.updateStatus(id, status);
+    // "Yetkazilgan" (done) yoki "Bekor" (cancelled) bosilsa — buyurtma DB'dan o'chiriladi
+    if (status === "done" || status === "cancelled") {
+      await api.deleteOrder(id);
+    } else {
+      await api.updateStatus(id, status);
+    }
     await get().fetchOrders();
   },
 

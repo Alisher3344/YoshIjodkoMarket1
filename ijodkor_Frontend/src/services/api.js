@@ -58,6 +58,7 @@ export const api = {
   createOrder: (data) => request("POST", "/orders/", data),
   updateStatus: (id, status) =>
     request("PUT", `/orders/${id}/status`, { status }),
+  deleteOrder: (id) => request("DELETE", `/orders/${id}`),
 
   // Custom orders
   getCustomOrders: () =>
