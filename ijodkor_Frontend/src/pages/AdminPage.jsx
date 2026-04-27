@@ -93,6 +93,16 @@ export default function AdminPage() {
 
   const [allStudentsSearch, setAllStudentsSearch] = useState("");
 
+  useEffect(() => {
+    if (
+      tab === "all-students" &&
+      adminLoggedIn &&
+      useStore.getState().currentUser?.role === "superadmin"
+    ) {
+      fetchAllStudentsGrouped();
+    }
+  }, [tab, adminLoggedIn]);
+
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginErr, setLoginErr] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
@@ -1034,19 +1044,25 @@ export default function AdminPage() {
                 (s.telegram_username || "").toLowerCase().includes(q) ||
                 (s.phone || "").toLowerCase().includes(q) ||
                 (s.grade || "").toLowerCase().includes(q);
-              const groups = allStudentsGrouped
-                .map((g) => ({
+              const allGroups = allStudentsGrouped.map((g) => {
+                // Maktab nomi mos kelsa — shu maktabning hamma o'quvchilarini ko'rsatamiz
+                const schoolMatches =
+                  q && (g.school_name || "").toLowerCase().includes(q);
+                return {
                   ...g,
-                  students: (g.students || []).filter(filterStudent),
-                }))
-                .filter(
-                  (g) =>
-                    g.students.length > 0 ||
-                    (!q &&
-                      (g.school_name || "").toLowerCase().includes(""))
-                );
+                  students: schoolMatches
+                    ? g.students || []
+                    : (g.students || []).filter(filterStudent),
+                };
+              });
 
-              if (groups.length === 0 || groups.every((g) => g.students.length === 0)) {
+              // Qidiruvsiz — barcha maktablar (bo'sh bo'lsa ham)
+              // Qidiruv bilan — faqat mos kelgan o'quvchili maktablar
+              const groups = q
+                ? allGroups.filter((g) => g.students.length > 0)
+                : allGroups;
+
+              if (groups.length === 0) {
                 return (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
                     <div className="text-5xl mb-4">🎓</div>
@@ -1056,8 +1072,8 @@ export default function AdminPage() {
                           ? `"${allStudentsSearch}" bo'yicha topilmadi`
                           : `Не найдено по "${allStudentsSearch}"`
                         : lang === "uz"
-                        ? "Hozircha o'quvchilar yo'q"
-                        : "Пока нет учеников"}
+                        ? "Maktablar va o'quvchilar yo'q"
+                        : "Нет школ и учеников"}
                     </p>
                   </div>
                 );
