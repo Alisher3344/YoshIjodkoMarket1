@@ -63,7 +63,30 @@ export default function App() {
   if (loading) {
     return (
       <div className="app">
-        <div className="spinner" />
+        <div
+          className="scale-in"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "70vh",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 56,
+              marginBottom: 16,
+              animation: "bounceIn 600ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+            }}
+          >
+            🎨
+          </div>
+          <div className="spinner" style={{ margin: "0 0 12px" }} />
+          <p className="muted" style={{ fontSize: 13 }}>
+            YoshIjodkor yuklanmoqda…
+          </p>
+        </div>
       </div>
     );
   }
@@ -71,11 +94,23 @@ export default function App() {
   if (error) {
     return (
       <div className="app">
-        <div className="card">
-          <div className="error">⚠️ {error}</div>
-          <p className="muted">
-            Iltimos, botdagi <b>📱 Telefon raqamni ulashish</b> tugmasini bosgan
-            bo'lganingizga ishonch hosil qiling, va Mini App'ni qayta oching.
+        <div className="card scale-in">
+          <div
+            style={{
+              fontSize: 48,
+              textAlign: "center",
+              marginBottom: 12,
+            }}
+          >
+            ⚠️
+          </div>
+          <h2 style={{ textAlign: "center", marginBottom: 12 }}>
+            Autentifikatsiya xatosi
+          </h2>
+          <div className="alert alert-danger">{error}</div>
+          <p className="hint" style={{ textAlign: "center" }}>
+            Iltimos botdagi <b>📱 Telefon raqamni ulashish</b> tugmasini
+            bosganingizga ishonch hosil qiling va Mini App'ni qayta oching.
           </p>
         </div>
       </div>
@@ -108,12 +143,26 @@ export default function App() {
   if (studentStatus === "rejected") {
     return (
       <div className="app">
-        <div className="card center">
-          <div style={{ fontSize: 64, marginBottom: 8 }}>❌</div>
+        <div className="card center scale-in" style={{ paddingTop: 32 }}>
+          <div
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: "50%",
+              margin: "0 auto 20px",
+              background: "var(--grad-rose)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 44,
+            }}
+          >
+            ❌
+          </div>
           <h1>Arizangiz rad etilgan</h1>
-          <p className="muted" style={{ marginTop: 12 }}>
-            Maktab ma'muriyati arizangizni rad etdi. Qo'shimcha ma'lumot
-            uchun maktab bilan bog'laning.
+          <p className="muted">
+            Maktab ma'muriyati arizangizni rad etdi. Qo'shimcha ma'lumot uchun
+            maktab bilan bog'laning.
           </p>
         </div>
       </div>

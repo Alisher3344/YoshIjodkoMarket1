@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { haptic, showAlert } from "../lib/tg";
 
 export default function StudentRegister({ user, onRegistered }) {
   const [name, setName] = useState(user?.name || "");
@@ -24,11 +25,15 @@ export default function StudentRegister({ user, onRegistered }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert("Rasm 2MB dan kichik bo'lsin");
+      haptic.error();
+      showAlert("Rasm 2MB dan kichik bo'lsin");
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => setAvatar(ev.target.result);
+    reader.onload = (ev) => {
+      setAvatar(ev.target.result);
+      haptic.light();
+    };
     reader.readAsDataURL(file);
   };
 
@@ -36,12 +41,12 @@ export default function StudentRegister({ user, onRegistered }) {
     e.preventDefault();
     setError("");
     if (!name.trim()) {
-      setError("Ismni kiriting");
-      return;
+      haptic.error();
+      return setError("Ismni kiriting");
     }
     if (!schoolId) {
-      setError("Maktabni tanlang");
-      return;
+      haptic.error();
+      return setError("Maktabni tanlang");
     }
     setSaving(true);
     try {
@@ -52,8 +57,10 @@ export default function StudentRegister({ user, onRegistered }) {
         school_id: parseInt(schoolId),
         avatar,
       });
+      haptic.success();
       onRegistered(res);
     } catch (err) {
+      haptic.error();
       setError(err.message);
     } finally {
       setSaving(false);
@@ -62,25 +69,28 @@ export default function StudentRegister({ user, onRegistered }) {
 
   return (
     <div className="app">
-      <div className="card">
-        <h1>📝 Ro'yxatdan o'tish</h1>
-        <p className="muted">
-          Yosh ijodkor sifatida ro'yxatdan o'tish uchun ma'lumotlaringizni
-          kiriting. Maktab ma'muriyati arizangizni tasdiqlagandan so'ng siz
-          o'z mahsulotlaringizni qo'sha olasiz.
+      <div className="hero scale-in">
+        <div style={{ fontSize: 36, marginBottom: 8 }}>📝</div>
+        <h1 style={{ color: "#fff", marginBottom: 4 }}>Ro'yxatdan o'tish</h1>
+        <p style={{ color: "rgba(255,255,255,0.92)", margin: 0, fontSize: 14 }}>
+          Yosh ijodkor sifatida ro'yxatdan o'ting. Maktab ma'muriyati arizangizni
+          tasdiqlagandan so'ng mahsulot qo'shishingiz mumkin.
         </p>
       </div>
 
-      <form className="card" onSubmit={onSubmit}>
-        {error && <div className="error">{error}</div>}
-
-        {/* Avatar */}
-        <div className="field" style={{ textAlign: "center" }}>
+      <form onSubmit={onSubmit} className="fade-in">
+        {/* Avatar uploader */}
+        <div className="card" style={{ textAlign: "center" }}>
           <label
+            className="upload-zone-image"
             style={{
               display: "inline-block",
+              width: 112,
+              height: 112,
+              borderRadius: "50%",
               cursor: "pointer",
-              position: "relative",
+              border: "3px solid var(--brand-1)",
+              padding: 0,
             }}
           >
             {avatar ? (
@@ -88,26 +98,23 @@ export default function StudentRegister({ user, onRegistered }) {
                 src={avatar}
                 alt=""
                 style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: "50%",
+                  width: "100%",
+                  height: "100%",
                   objectFit: "cover",
-                  border: "3px solid var(--tg-link)",
+                  borderRadius: "50%",
                 }}
               />
             ) : (
               <div
                 style={{
-                  width: 96,
-                  height: 96,
+                  width: "100%",
+                  height: "100%",
                   borderRadius: "50%",
-                  background: "#f3f4f6",
+                  background: "var(--grad-soft)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 36,
-                  border: "3px dashed #d1d5db",
-                  color: "#9ca3af",
+                  fontSize: 40,
                 }}
               >
                 📷
@@ -120,79 +127,85 @@ export default function StudentRegister({ user, onRegistered }) {
               style={{ display: "none" }}
             />
           </label>
-          <p className="hint" style={{ marginTop: 6 }}>
-            Rasm qo'shish (ixtiyoriy)
+          <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+            {avatar ? "Rasmni o'zgartirish uchun bosing" : "Profil rasmini yuklang (ixtiyoriy)"}
           </p>
         </div>
 
-        <div className="field">
-          <label className="label">Ism *</label>
-          <input
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Alisher"
-          />
-        </div>
+        <div className="card">
+          {error && <div className="error">⚠️ {error}</div>}
 
-        <div className="field">
-          <label className="label">Familiya</label>
-          <input
-            className="input"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Karimov"
-          />
-        </div>
-
-        <div className="field">
-          <label className="label">Sinf</label>
-          <input
-            className="input"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            placeholder="Masalan: 4-A"
-          />
-        </div>
-
-        <div className="field">
-          <label className="label">Maktab *</label>
-          {loadingSchools ? (
-            <div className="spinner" style={{ margin: "12px auto" }} />
-          ) : (
-            <select
+          <div className="field">
+            <label className="label">Ism *</label>
+            <input
               className="input"
-              value={schoolId}
-              onChange={(e) => setSchoolId(e.target.value)}
-            >
-              <option value="">— Maktabni tanlang —</option>
-              {schools.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.district ? ` (${s.district})` : ""}
-                </option>
-              ))}
-            </select>
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alisher"
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">Familiya</label>
+            <input
+              className="input"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Karimov"
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">Sinf</label>
+            <input
+              className="input"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              placeholder="Masalan: 4-A"
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">Maktab *</label>
+            {loadingSchools ? (
+              <div className="skeleton" style={{ height: 46 }} />
+            ) : (
+              <select
+                className="input"
+                value={schoolId}
+                onChange={(e) => {
+                  setSchoolId(e.target.value);
+                  haptic.select();
+                }}
+              >
+                <option value="">— Maktabni tanlang —</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.district ? ` (${s.district})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {user?.phone && (
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label className="label">Telefon</label>
+              <input className="input" value={user.phone} disabled />
+              <p className="hint" style={{ marginTop: 6 }}>
+                Telegram orqali ulashilgan raqam
+              </p>
+            </div>
           )}
         </div>
 
-        {user?.phone && (
-          <div className="field">
-            <label className="label">Telefon</label>
-            <input
-              className="input"
-              value={user.phone}
-              disabled
-              style={{ background: "#f3f4f6" }}
-            />
-            <p className="hint" style={{ marginTop: 6 }}>
-              Telegram'dan ulashilgan raqam
-            </p>
-          </div>
-        )}
-
-        <button className="btn" disabled={saving || loadingSchools}>
-          {saving ? "Yuborilmoqda..." : "Ariza yuborish"}
+        <button
+          type="submit"
+          className="btn btn-gradient"
+          disabled={saving || loadingSchools}
+        >
+          {saving ? "Yuborilmoqda…" : "Arizani yuborish →"}
         </button>
       </form>
     </div>

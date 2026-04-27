@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { haptic, showAlert } from "../lib/tg";
 
 const CATEGORIES = [
-  { value: "paintings", label: "🎨 Rassomchilik" },
-  { value: "handcraft", label: "✂️ Qo'l mehnati" },
-  { value: "clothing", label: "👗 Tikilgan kiyimlar" },
-  { value: "toys", label: "🧸 O'yinchoqlar" },
-  { value: "souvenirs", label: "🎁 Suvenir/Sovg'a" },
-  { value: "holiday", label: "🎉 Bayram/Dekor" },
-  { value: "educational", label: "📚 Ta'limiy" },
-  { value: "digital", label: "💻 Raqamli" },
-  { value: "creative", label: "⭐ Ijodiy xizmat" },
-  { value: "school", label: "🏫 Maktab loyihasi" },
-  { value: "eco", label: "🌿 Eko/Tabiiy" },
-  { value: "other", label: "📦 Boshqa" },
+  { value: "paintings",   emoji: "🎨", label: "Rassomchilik" },
+  { value: "handcraft",   emoji: "✂️", label: "Qo'l mehnati" },
+  { value: "clothing",    emoji: "👗", label: "Tikilgan kiyimlar" },
+  { value: "toys",        emoji: "🧸", label: "O'yinchoqlar" },
+  { value: "souvenirs",   emoji: "🎁", label: "Suvenir / Sovg'a" },
+  { value: "holiday",     emoji: "🎉", label: "Bayram / Dekor" },
+  { value: "educational", emoji: "📚", label: "Ta'limiy" },
+  { value: "digital",     emoji: "💻", label: "Raqamli" },
+  { value: "creative",    emoji: "⭐", label: "Ijodiy xizmat" },
+  { value: "school",      emoji: "🏫", label: "Maktab loyihasi" },
+  { value: "eco",         emoji: "🌿", label: "Eko / Tabiiy" },
+  { value: "other",       emoji: "📦", label: "Boshqa" },
 ];
 
 export default function ProductForm({ onClose, onCreated }) {
@@ -30,21 +31,33 @@ export default function ProductForm({ onClose, onCreated }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert("Rasm 2MB dan kichik bo'lsin");
+      haptic.error();
+      showAlert("Rasm 2MB dan kichik bo'lsin");
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => setImage(ev.target.result);
+    reader.onload = (ev) => {
+      setImage(ev.target.result);
+      haptic.light();
+    };
     reader.readAsDataURL(file);
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!name.trim()) return setError("Mahsulot nomini kiriting");
-    if (!price || parseFloat(price) <= 0)
+    if (!name.trim()) {
+      haptic.error();
+      return setError("Mahsulot nomini kiriting");
+    }
+    if (!price || parseFloat(price) <= 0) {
+      haptic.error();
       return setError("Narx 0 dan katta bo'lishi kerak");
-    if (!image) return setError("Rasmni yuklang");
+    }
+    if (!image) {
+      haptic.error();
+      return setError("Rasmni yuklang");
+    }
 
     setSaving(true);
     try {
@@ -56,8 +69,10 @@ export default function ProductForm({ onClose, onCreated }) {
         image,
         desc_uz: desc.trim(),
       });
+      haptic.success();
       onCreated(created);
     } catch (err) {
+      haptic.error();
       setError(err.message);
     } finally {
       setSaving(false);
@@ -66,95 +81,67 @@ export default function ProductForm({ onClose, onCreated }) {
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        zIndex: 50,
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        padding: 16,
-        overflowY: "auto",
+      className="sheet-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 20,
-          width: "100%",
-          maxWidth: 480,
-          marginTop: 20,
-          marginBottom: 20,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px 20px",
-            borderBottom: "1px solid #f3f4f6",
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 18 }}>🎨 Yangi mahsulot</h2>
+      <div className="sheet">
+        <div className="sheet-handle" />
+        <div className="sheet-title">
+          <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 22 }}>🎨</span>
+            Yangi mahsulot
+          </h2>
           <button
-            onClick={onClose}
-            style={{
-              border: 0,
-              background: "transparent",
-              fontSize: 24,
-              cursor: "pointer",
-              color: "#6b7280",
+            className="sheet-close"
+            onClick={() => {
+              haptic.light();
+              onClose();
             }}
+            type="button"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        <form onSubmit={onSubmit} style={{ padding: 20 }}>
-          {error && <div className="error">{error}</div>}
+        <form onSubmit={onSubmit}>
+          {error && <div className="error">⚠️ {error}</div>}
 
-          {/* Rasm */}
+          {/* Rasm yuklash */}
           <div className="field">
-            <label className="label">Rasm *</label>
-            <label
-              style={{
-                display: "block",
-                cursor: "pointer",
-                border: "2px dashed #d1d5db",
-                borderRadius: 12,
-                padding: image ? 0 : 30,
-                textAlign: "center",
-                color: "#9ca3af",
-                background: "#f9fafb",
-                overflow: "hidden",
-              }}
-            >
-              {image ? (
-                <img
-                  src={image}
-                  alt=""
-                  style={{ width: "100%", display: "block" }}
+            <label className="label">Mahsulot rasmi *</label>
+            {image ? (
+              <label className="upload-zone-image">
+                <img src={image} alt="" />
+                <div className="upload-zone-overlay">📷 O'zgartirish</div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onImage}
+                  style={{ display: "none" }}
                 />
-              ) : (
-                <>
-                  <div style={{ fontSize: 36 }}>📷</div>
-                  <div style={{ fontWeight: 600, marginTop: 4 }}>
-                    Rasm yuklash
-                  </div>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onImage}
-                style={{ display: "none" }}
-              />
-            </label>
+              </label>
+            ) : (
+              <label className="upload-zone">
+                <div style={{ fontSize: 40, marginBottom: 8 }}>📷</div>
+                <div style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 14 }}>
+                  Rasm yuklash
+                </div>
+                <div className="hint" style={{ marginTop: 4 }}>
+                  Maksimal 2 MB
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onImage}
+                  style={{ display: "none" }}
+                />
+              </label>
+            )}
           </div>
 
-          {/* Nomi */}
+          {/* Nom */}
           <div className="field">
             <label className="label">Mahsulot nomi *</label>
             <input
@@ -162,20 +149,22 @@ export default function ProductForm({ onClose, onCreated }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Masalan: Akril rasmi"
+              maxLength={80}
             />
           </div>
 
           {/* Narx + Soni */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 }}>
             <div className="field">
               <label className="label">Narx (so'm) *</label>
               <input
                 className="input"
                 type="number"
+                inputMode="numeric"
                 min="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="50000"
+                placeholder="50 000"
               />
             </div>
             <div className="field">
@@ -183,6 +172,7 @@ export default function ProductForm({ onClose, onCreated }) {
               <input
                 className="input"
                 type="number"
+                inputMode="numeric"
                 min="1"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
@@ -190,20 +180,52 @@ export default function ProductForm({ onClose, onCreated }) {
             </div>
           </div>
 
-          {/* Turi */}
+          {/* Turi — chip selector */}
           <div className="field">
             <label className="label">Turi</label>
-            <select
-              className="input"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 6,
+                maxHeight: 130,
+                overflowY: "auto",
+                padding: 4,
+                margin: -4,
+              }}
             >
               {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => {
+                    setCategory(c.value);
+                    haptic.select();
+                  }}
+                  style={{
+                    border: "1.5px solid",
+                    borderColor: category === c.value
+                      ? "var(--brand-1)"
+                      : "var(--border)",
+                    background: category === c.value
+                      ? "rgba(37, 99, 235, 0.08)"
+                      : "var(--surface-1)",
+                    color: category === c.value
+                      ? "var(--brand-1)"
+                      : "var(--text-2)",
+                    borderRadius: "var(--r-full)",
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all var(--t-fast)",
+                  }}
+                >
+                  {c.emoji} {c.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Tavsif */}
@@ -214,23 +236,17 @@ export default function ProductForm({ onClose, onCreated }) {
               rows={3}
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="Mahsulot haqida qisqacha"
+              placeholder="Mahsulot haqida qisqacha…"
+              maxLength={300}
             />
           </div>
 
-          <div
-            style={{
-              background: "#fef3c7",
-              border: "1px solid #fcd34d",
-              color: "#92400e",
-              padding: 10,
-              borderRadius: 10,
-              fontSize: 12,
-              marginBottom: 12,
-            }}
-          >
-            ℹ️ Mahsulotingiz maktab ma'muriyati tomonidan tasdiqlangandan keyin
-            saytda ko'rinadi.
+          <div className="alert alert-info" style={{ marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>ℹ️</span>
+            <div>
+              Mahsulotingiz maktab ma'muriyati tomonidan tasdiqlangandan keyin
+              saytda ko'rinadi.
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: 10 }}>
@@ -244,11 +260,11 @@ export default function ProductForm({ onClose, onCreated }) {
             </button>
             <button
               type="submit"
-              className="btn"
-              style={{ flex: 1 }}
+              className="btn btn-gradient"
+              style={{ flex: 1.4 }}
               disabled={saving}
             >
-              {saving ? "Yuborilmoqda..." : "Yuborish"}
+              {saving ? "Yuborilmoqda…" : "Yuborish →"}
             </button>
           </div>
         </form>

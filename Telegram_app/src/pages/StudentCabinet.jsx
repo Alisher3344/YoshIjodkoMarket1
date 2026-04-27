@@ -1,19 +1,35 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { haptic, showConfirm } from "../lib/tg";
 import ProductForm from "./ProductForm.jsx";
 
 const formatPrice = (n) => (n || 0).toLocaleString("uz-UZ") + " so'm";
 
-const STATUS_BADGE = {
-  pending:  { label: "⏳ Tasdiq kutmoqda", bg: "#fef3c7", color: "#92400e" },
-  approved: { label: "✅ Tasdiqlangan",   bg: "#dcfce7", color: "#166534" },
-  rejected: { label: "❌ Rad etilgan",     bg: "#fee2e2", color: "#991b1b" },
+const STATUS = {
+  pending:  { label: "Kutmoqda",   className: "pill-warning", emoji: "⏳" },
+  approved: { label: "Tasdiqlandi", className: "pill-success", emoji: "✅" },
+  rejected: { label: "Rad etildi",  className: "pill-danger",  emoji: "❌" },
+};
+
+const CATEGORY_EMOJI = {
+  paintings: "🎨",
+  handcraft: "✂️",
+  clothing: "👗",
+  toys: "🧸",
+  souvenirs: "🎁",
+  holiday: "🎉",
+  educational: "📚",
+  digital: "💻",
+  creative: "⭐",
+  school: "🏫",
+  eco: "🌿",
+  other: "📦",
 };
 
 export default function StudentCabinet({ user, student }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("profile");
+  const [tab, setTab] = useState("products");
   const [showForm, setShowForm] = useState(false);
 
   const loadProducts = async () => {
@@ -21,8 +37,7 @@ export default function StudentCabinet({ user, student }) {
     try {
       const list = await api.getMyStudentProducts();
       setProducts(list);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setProducts([]);
     } finally {
       setLoading(false);
@@ -34,148 +49,126 @@ export default function StudentCabinet({ user, student }) {
   }, []);
 
   const onDelete = async (id) => {
-    if (!confirm("Mahsulotni o'chirasizmi?")) return;
+    const ok = await showConfirm("Mahsulotni o'chirasizmi?");
+    if (!ok) return;
     try {
       await api.deleteMyStudentProduct(id);
+      haptic.success();
       setProducts((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
+      haptic.error();
       alert(err.message);
     }
   };
 
+  const stats = {
+    total: products.length,
+    approved: products.filter((p) => p.status === "approved").length,
+    pending: products.filter((p) => p.status === "pending").length,
+  };
+
   return (
     <div className="app">
-      {/* Profil header */}
-      <div className="card">
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {student.avatar ? (
-            <img
-              src={student.avatar}
-              alt=""
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid var(--tg-link)",
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: "var(--tg-link)",
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 26,
-                fontWeight: 800,
-              }}
-            >
-              {student.name?.[0]?.toUpperCase() || "👤"}
+      {/* Hero — Profil */}
+      <div className="hero scale-in">
+        <div className="flex items-center gap-3">
+          <div className="avatar avatar-lg" style={{ border: "4px solid rgba(255,255,255,0.25)" }}>
+            {student.avatar ? (
+              <img src={student.avatar} alt="" />
+            ) : (
+              student.name?.[0]?.toUpperCase() || "👤"
+            )}
+          </div>
+          <div className="flex-1">
+            <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 2 }}>
+              👋 Salom,
             </div>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>
+            <h2 style={{ color: "#fff", margin: 0, fontSize: 20 }}>
               {student.name} {student.full_name}
-            </div>
-            <div className="hint" style={{ marginTop: 2 }}>
-              {student.grade && <>🎓 {student.grade}-sinf</>}
-              {student.grade && user?.phone && " · "}
-              {user?.phone && <>📞 {user.phone}</>}
-            </div>
-            <div
-              style={{
-                display: "inline-block",
-                marginTop: 6,
-                padding: "2px 10px",
-                background: "#dcfce7",
-                color: "#166534",
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              ✅ Tasdiqlangan
+            </h2>
+            <div className="flex gap-2 mt-2" style={{ flexWrap: "wrap" }}>
+              {student.grade && (
+                <span className="pill pill-glass">
+                  🎓 {student.grade}-sinf
+                </span>
+              )}
+              <span className="pill pill-glass">
+                ✅ Tasdiqlangan
+              </span>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Statistika */}
+      <div className="stats fade-in">
+        <div className="stat">
+          <div className="stat-value">{stats.total}</div>
+          <div className="stat-label">Jami</div>
+        </div>
+        <div className="stat">
+          <div className="stat-value" style={{ color: "var(--success)" }}>
+            {stats.approved}
+          </div>
+          <div className="stat-label">Tasdiqlandi</div>
+        </div>
+        <div className="stat">
+          <div className="stat-value" style={{ color: "var(--warning)" }}>
+            {stats.pending}
+          </div>
+          <div className="stat-label">Kutmoqda</div>
+        </div>
+      </div>
+
       {/* Tab switcher */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 12,
-          background: "#fff",
-          padding: 4,
-          borderRadius: 12,
-        }}
-      >
+      <div className="segmented">
         <button
-          onClick={() => setTab("profile")}
-          style={{
-            flex: 1,
-            padding: "10px",
-            border: 0,
-            borderRadius: 10,
-            fontWeight: 700,
-            cursor: "pointer",
-            background: tab === "profile" ? "var(--tg-link)" : "transparent",
-            color: tab === "profile" ? "#fff" : "var(--tg-text)",
+          className={tab === "products" ? "active" : ""}
+          onClick={() => {
+            setTab("products");
+            haptic.select();
+          }}
+        >
+          🎨 Mahsulotlar
+        </button>
+        <button
+          className={tab === "profile" ? "active" : ""}
+          onClick={() => {
+            setTab("profile");
+            haptic.select();
           }}
         >
           👤 Profil
         </button>
-        <button
-          onClick={() => setTab("products")}
-          style={{
-            flex: 1,
-            padding: "10px",
-            border: 0,
-            borderRadius: 10,
-            fontWeight: 700,
-            cursor: "pointer",
-            background: tab === "products" ? "var(--tg-link)" : "transparent",
-            color: tab === "products" ? "#fff" : "var(--tg-text)",
-          }}
-        >
-          🎨 Mahsulotlar
-          {products.length > 0 && (
-            <span
-              style={{
-                marginLeft: 6,
-                fontSize: 11,
-                background: tab === "products" ? "rgba(255,255,255,0.3)" : "#e5e7eb",
-                padding: "1px 7px",
-                borderRadius: 999,
-              }}
-            >
-              {products.length}
-            </span>
-          )}
-        </button>
       </div>
 
       {tab === "profile" && (
-        <div className="card">
-          <h2>Mening profilim</h2>
-          <Row label="Ism" value={student.name} />
-          <Row label="Familiya" value={student.full_name || "—"} />
-          <Row label="Sinf" value={student.grade || "—"} />
-          <Row label="Telefon" value={user?.phone || "—"} />
-          <p className="hint" style={{ marginTop: 12 }}>
-            Ma'lumotni o'zgartirish uchun maktab ma'muriyati bilan bog'laning.
+        <div className="card fade-in">
+          <h3 style={{ marginBottom: 8 }}>Mening profilim</h3>
+          <div className="row">
+            <span className="row-label">Ism</span>
+            <span className="row-value">{student.name}</span>
+          </div>
+          <div className="row">
+            <span className="row-label">Familiya</span>
+            <span className="row-value">{student.full_name || "—"}</span>
+          </div>
+          <div className="row">
+            <span className="row-label">Sinf</span>
+            <span className="row-value">{student.grade || "—"}</span>
+          </div>
+          <div className="row">
+            <span className="row-label">Telefon</span>
+            <span className="row-value">{user?.phone || "—"}</span>
+          </div>
+          <p className="hint" style={{ marginTop: 12, marginBottom: 0 }}>
+            Ma'lumotni o'zgartirish uchun maktab ma'muriyatiga murojaat qiling.
           </p>
         </div>
       )}
 
       {tab === "products" && (
-        <div className="card">
+        <div className="fade-in">
           <div
             style={{
               display: "flex",
@@ -186,16 +179,11 @@ export default function StudentCabinet({ user, student }) {
           >
             <h2 style={{ margin: 0 }}>Mening mahsulotlarim</h2>
             <button
-              onClick={() => setShowForm(true)}
-              style={{
-                background: "var(--tg-link)",
-                color: "#fff",
-                border: 0,
-                borderRadius: 10,
-                padding: "8px 14px",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
+              className="btn btn-sm btn-gradient"
+              style={{ width: "auto" }}
+              onClick={() => {
+                setShowForm(true);
+                haptic.medium();
               }}
             >
               + Qo'shish
@@ -203,116 +191,96 @@ export default function StudentCabinet({ user, student }) {
           </div>
 
           {loading ? (
-            <div className="spinner" />
+            <div className="flex-col gap-2">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="skeleton"
+                  style={{ height: 96, borderRadius: 16 }}
+                />
+              ))}
+            </div>
           ) : products.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "30px 0" }}>
-              <div style={{ fontSize: 48 }}>🎨</div>
-              <p className="muted" style={{ marginTop: 8 }}>
-                Hozircha mahsulotlaringiz yo'q.
-              </p>
-              <p className="hint">
-                Yuqoridagi <b>+ Qo'shish</b> tugmasini bosib mahsulot yuklang.
-              </p>
+            <div className="card empty">
+              <span className="empty-emoji">🎨</span>
+              <div className="empty-title">Hali mahsulotlaringiz yo'q</div>
+              <div className="empty-desc">
+                Yuqoridagi <b>+ Qo'shish</b> tugmasini bosib o'zingiz ijod
+                qilgan mahsulotni yuklang.
+              </div>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 10 }}>
+            <div className="flex-col gap-2">
               {products.map((p) => {
-                const badge = STATUS_BADGE[p.status] || STATUS_BADGE.approved;
+                const status = STATUS[p.status] || STATUS.approved;
+                const emoji = CATEGORY_EMOJI[p.category] || "📦";
                 return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      padding: 10,
-                      background: "#f9fafb",
-                      borderRadius: 12,
-                      border: "1px solid #e5e7eb",
-                    }}
-                  >
+                  <div key={p.id} className="list-item">
                     {p.image ? (
-                      <img
-                        src={p.image}
-                        alt=""
-                        style={{
-                          width: 70,
-                          height: 70,
-                          borderRadius: 10,
-                          objectFit: "cover",
-                          flexShrink: 0,
-                        }}
-                      />
+                      <img className="list-img" src={p.image} alt="" />
                     ) : (
                       <div
+                        className="list-img"
                         style={{
-                          width: 70,
-                          height: 70,
-                          borderRadius: 10,
-                          background: "#e5e7eb",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           fontSize: 28,
-                          flexShrink: 0,
                         }}
                       >
-                        📦
+                        {emoji}
                       </div>
                     )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1">
                       <div
                         style={{
                           fontWeight: 700,
                           fontSize: 14,
                           marginBottom: 2,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
                         }}
+                        className="truncate"
                       >
                         {p.name_uz}
                       </div>
                       <div
                         style={{
-                          color: "var(--tg-link)",
+                          color: "var(--brand-1)",
                           fontWeight: 800,
                           fontSize: 13,
+                          marginBottom: 6,
                         }}
                       >
                         {formatPrice(p.price)} · {p.stock} dona
                       </div>
                       <div
                         style={{
-                          display: "inline-block",
-                          marginTop: 4,
-                          padding: "2px 8px",
-                          background: badge.bg,
-                          color: badge.color,
-                          borderRadius: 999,
-                          fontSize: 10,
-                          fontWeight: 700,
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                          flexWrap: "wrap",
                         }}
                       >
-                        {badge.label}
+                        <span className={`pill ${status.className}`}>
+                          {status.emoji} {status.label}
+                        </span>
+                        {p.status === "pending" && (
+                          <button
+                            onClick={() => onDelete(p.id)}
+                            style={{
+                              border: "1px solid var(--danger-bg)",
+                              background: "transparent",
+                              color: "var(--danger)",
+                              borderRadius: "var(--r-full)",
+                              padding: "3px 10px",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            🗑 O'chirish
+                          </button>
+                        )}
                       </div>
-                      {p.status === "pending" && (
-                        <button
-                          onClick={() => onDelete(p.id)}
-                          style={{
-                            marginLeft: 6,
-                            background: "transparent",
-                            border: "1px solid #fca5a5",
-                            color: "#dc2626",
-                            borderRadius: 999,
-                            padding: "1px 8px",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          🗑 O'chirish
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
@@ -328,26 +296,10 @@ export default function StudentCabinet({ user, student }) {
           onCreated={(p) => {
             setProducts((prev) => [p, ...prev]);
             setShowForm(false);
+            haptic.success();
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Row({ label, value }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "8px 0",
-        borderBottom: "1px solid #f3f4f6",
-        fontSize: 14,
-      }}
-    >
-      <span className="muted">{label}</span>
-      <span style={{ fontWeight: 600 }}>{value}</span>
     </div>
   );
 }
