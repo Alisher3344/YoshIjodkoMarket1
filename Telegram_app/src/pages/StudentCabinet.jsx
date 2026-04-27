@@ -9,6 +9,7 @@ const STATUS = {
   pending:  { label: "Kutmoqda",   className: "pill-warning", emoji: "⏳" },
   approved: { label: "Tasdiqlandi", className: "pill-success", emoji: "✅" },
   rejected: { label: "Rad etildi",  className: "pill-danger",  emoji: "❌" },
+  sold:     { label: "Sotilgan",    className: "pill-info",    emoji: "🎉" },
 };
 
 const CATEGORY_EMOJI = {
@@ -61,10 +62,14 @@ export default function StudentCabinet({ user, student }) {
     }
   };
 
+  const isSold = (p) => p.status === "approved" && (p.stock || 0) === 0;
+
   const stats = {
     total: products.length,
-    approved: products.filter((p) => p.status === "approved").length,
+    approved: products.filter((p) => p.status === "approved" && !isSold(p))
+      .length,
     pending: products.filter((p) => p.status === "pending").length,
+    sold: products.filter(isSold).length,
   };
 
   return (
@@ -101,7 +106,10 @@ export default function StudentCabinet({ user, student }) {
       </div>
 
       {/* Statistika */}
-      <div className="stats fade-in">
+      <div
+        className="stats fade-in"
+        style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+      >
         <div className="stat">
           <div className="stat-value">{stats.total}</div>
           <div className="stat-label">Jami</div>
@@ -110,13 +118,19 @@ export default function StudentCabinet({ user, student }) {
           <div className="stat-value" style={{ color: "var(--success)" }}>
             {stats.approved}
           </div>
-          <div className="stat-label">Tasdiqlandi</div>
+          <div className="stat-label">Faol</div>
         </div>
         <div className="stat">
           <div className="stat-value" style={{ color: "var(--warning)" }}>
             {stats.pending}
           </div>
           <div className="stat-label">Kutmoqda</div>
+        </div>
+        <div className="stat">
+          <div className="stat-value" style={{ color: "var(--info, #3b82f6)" }}>
+            {stats.sold}
+          </div>
+          <div className="stat-label">Sotilgan</div>
         </div>
       </div>
 
@@ -212,12 +226,30 @@ export default function StudentCabinet({ user, student }) {
           ) : (
             <div className="flex-col gap-2">
               {products.map((p) => {
-                const status = STATUS[p.status] || STATUS.approved;
+                const sold = isSold(p);
+                const status = sold
+                  ? STATUS.sold
+                  : STATUS[p.status] || STATUS.approved;
                 const emoji = CATEGORY_EMOJI[p.category] || "📦";
                 return (
-                  <div key={p.id} className="list-item">
+                  <div
+                    key={p.id}
+                    className="list-item"
+                    style={{
+                      opacity: sold ? 0.6 : 1,
+                      background: sold ? "#f9fafb" : undefined,
+                      position: "relative",
+                    }}
+                  >
                     {p.image ? (
-                      <img className="list-img" src={p.image} alt="" />
+                      <img
+                        className="list-img"
+                        src={p.image}
+                        alt=""
+                        style={{
+                          filter: sold ? "grayscale(0.6)" : undefined,
+                        }}
+                      />
                     ) : (
                       <div
                         className="list-img"
@@ -237,6 +269,8 @@ export default function StudentCabinet({ user, student }) {
                           fontWeight: 700,
                           fontSize: 14,
                           marginBottom: 2,
+                          textDecoration: sold ? "line-through" : "none",
+                          textDecorationColor: "rgba(15,23,42,0.3)",
                         }}
                         className="truncate"
                       >
@@ -244,13 +278,14 @@ export default function StudentCabinet({ user, student }) {
                       </div>
                       <div
                         style={{
-                          color: "var(--brand-1)",
+                          color: sold ? "#94a3b8" : "var(--brand-1)",
                           fontWeight: 800,
                           fontSize: 13,
                           marginBottom: 6,
                         }}
                       >
-                        {formatPrice(p.price)} · {p.stock} dona
+                        {formatPrice(p.price)}
+                        {sold ? " · sotilgan" : ` · ${p.stock} dona`}
                       </div>
                       <div
                         style={{
@@ -263,6 +298,17 @@ export default function StudentCabinet({ user, student }) {
                         <span className={`pill ${status.className}`}>
                           {status.emoji} {status.label}
                         </span>
+                        {sold && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "#3b82f6",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Mahsulotingiz sotildi 🎉
+                          </span>
+                        )}
                         {p.status === "pending" && (
                           <button
                             onClick={() => onDelete(p.id)}
