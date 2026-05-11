@@ -15,19 +15,22 @@ async def get_users(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", dependencies=[Depends(require_superadmin)])
 async def create_user(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    # Majburiy maydonlarni tekshirish
+    # Asosiy majburiy maydonlar (barcha rollar uchun)
     if not data.name.strip():
         raise HTTPException(status_code=400, detail="Ism kiritilishi shart")
-    if not data.full_name.strip():
-        raise HTTPException(status_code=400, detail="To'liq ism-familiya kiritilishi shart")
-    if not data.school.strip():
-        raise HTTPException(status_code=400, detail="Maktab nomi kiritilishi shart")
-    if not data.phone.strip():
-        raise HTTPException(status_code=400, detail="Telefon raqami kiritilishi shart")
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username kiritilishi shart")
     if not data.password or len(data.password) < 4:
         raise HTTPException(status_code=400, detail="Parol kamida 4 ta belgi bo'lsin")
+
+    # Faqat school_admin uchun maktab/familiya/telefon majburiy
+    if data.role == "school_admin":
+        if not (data.full_name or "").strip():
+            raise HTTPException(status_code=400, detail="To'liq ism-familiya kiritilishi shart")
+        if not (data.school or "").strip():
+            raise HTTPException(status_code=400, detail="Maktab nomi kiritilishi shart")
+        if not (data.phone or "").strip():
+            raise HTTPException(status_code=400, detail="Telefon raqami kiritilishi shart")
 
     if await user_crud.get_by_username(db, data.username):
         raise HTTPException(status_code=400, detail="Bu username band")
