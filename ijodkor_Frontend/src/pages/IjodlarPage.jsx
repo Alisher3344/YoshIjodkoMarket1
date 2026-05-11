@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, X, Heart } from "lucide-react";
+import { Search, SlidersHorizontal, X, Heart, Palette } from "lucide-react";
 import useStore from "../store/useStore";
 import { categoryLabels } from "../components/ui/data/translations";
 import ProductCard from "../components/product/ProductCard";
 
-export default function CatalogPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
+export default function IjodlarPage() {
   const {
     lang,
     products,
@@ -32,21 +28,12 @@ export default function CatalogPage() {
     fetchProducts();
   }, []);
 
-  // URL dan kategoriya olish
-  useEffect(() => {
-    const cat = searchParams.get("category");
-    if (cat) setSelectedCategory(cat);
-  }, [searchParams]);
-
-  // Filter
   let filtered = Array.isArray(products) ? [...products] : [];
 
-  // Kategoriya
   if (selectedCategory && selectedCategory !== "all") {
     filtered = filtered.filter((p) => p.category === selectedCategory);
   }
 
-  // Qidiruv
   if (searchQuery && searchQuery.trim()) {
     const q = searchQuery.toLowerCase();
     filtered = filtered.filter((p) => {
@@ -58,20 +45,17 @@ export default function CatalogPage() {
     });
   }
 
-  // Narx
   filtered = filtered.filter((p) => {
     const price = p.price || 0;
     return price >= priceRange[0] && price <= priceRange[1];
   });
 
-  // Faqat imkoniyati cheklanganlar
   if (onlyDisabled) {
     filtered = filtered.filter(
       (p) => (p.studentType || p.student_type) === "disabled"
     );
   }
 
-  // Sort
   if (sortBy === "cheap")
     filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
   if (sortBy === "expensive")
@@ -97,20 +81,26 @@ export default function CatalogPage() {
     onlyDisabled;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-2">
-          {lang === "uz" ? "Mahsulotlar katalogi" : "Каталог товаров"}
-        </h1>
-        <p className="text-sm text-gray-500">
-          {lang === "uz"
-            ? `Jami: ${filtered.length} ta mahsulot`
-            : `Всего: ${filtered.length} товаров`}
-        </p>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      {/* Hero */}
+      <div className="mb-4 sm:mb-6 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-2xl p-4 sm:p-6 border border-blue-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#1a56db] to-purple-600 flex items-center justify-center text-white shadow-lg flex-shrink-0">
+            <Palette size={20} className="sm:w-[22px] sm:h-[22px]" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 truncate">
+              {lang === "uz" ? "Ijodlar" : "Творчество"}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500">
+              {lang === "uz"
+                ? `${filtered.length} ta ijod mahsuloti`
+                : `${filtered.length} творческих работ`}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Mobile filter toggle */}
       <button
         onClick={() => setShowFilters(!showFilters)}
         className="lg:hidden flex items-center gap-2 bg-[#1a56db] text-white px-4 py-2.5 rounded-xl font-bold text-sm mb-4"
@@ -125,11 +115,9 @@ export default function CatalogPage() {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-        {/* ── Sidebar filtrlari ──────────────────────────────────────── */}
         <aside
           className={`space-y-4 ${showFilters ? "block" : "hidden lg:block"}`}
         >
-          {/* Kategoriyalar */}
           <div className="bg-white rounded-2xl p-4 border border-gray-100">
             <h3 className="font-black text-sm text-gray-800 mb-3">
               {lang === "uz" ? "Kategoriyalar" : "Категории"}
@@ -158,7 +146,6 @@ export default function CatalogPage() {
             </div>
           </div>
 
-          {/* Narx */}
           <div className="bg-white rounded-2xl p-4 border border-gray-100">
             <h3 className="font-black text-sm text-gray-800 mb-3">
               {lang === "uz" ? "Narx diapazoni" : "Цена"}
@@ -188,7 +175,6 @@ export default function CatalogPage() {
             </div>
           </div>
 
-          {/* Faqat imkoniyati cheklanganlar */}
           <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-4 border-2 border-rose-100">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -211,7 +197,6 @@ export default function CatalogPage() {
             </label>
           </div>
 
-          {/* Reset */}
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -223,9 +208,7 @@ export default function CatalogPage() {
           )}
         </aside>
 
-        {/* ── Mahsulotlar ────────────────────────────────────────────── */}
         <main>
-          {/* Top bar — search + sort */}
           <div className="bg-white rounded-2xl p-3 border border-gray-100 mb-4 flex items-center gap-2 flex-wrap">
             <div className="flex-1 min-w-[200px] flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
               <Search size={16} className="text-gray-400" />
@@ -269,7 +252,6 @@ export default function CatalogPage() {
             </select>
           </div>
 
-          {/* Content */}
           {productsLoading ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin h-12 w-12 border-4 border-[#1a56db] border-t-transparent rounded-full"></div>
@@ -281,8 +263,8 @@ export default function CatalogPage() {
               </h3>
               <p className="text-gray-500 text-sm mb-4">
                 {lang === "uz"
-                  ? "Filtrlarni o'zgartirib ko'ring yoki qidiruv so'zini almashtiring"
-                  : "Попробуйте изменить фильтры или поисковый запрос"}
+                  ? "Filtrlarni o'zgartirib ko'ring"
+                  : "Попробуйте изменить фильтры"}
               </p>
               {hasActiveFilters && (
                 <button
@@ -294,7 +276,7 @@ export default function CatalogPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">
               {filtered.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

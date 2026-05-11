@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { categoryLabels } from "../components/ui/data/translations";
 import {
+  BOOK_CATEGORIES,
+  findCategory as findBookCategory,
+  findSubcategory as findBookSubcategory,
+} from "../components/ui/data/bookCategories";
+import {
   LayoutDashboard,
   Package,
   ShoppingBag,
@@ -24,6 +29,14 @@ import {
   GraduationCap,
   Sun,
   Moon,
+  BookOpen,
+  Video,
+  FileText,
+  Upload,
+  Download,
+  Play,
+  Film,
+  Construction,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import { api } from "../services/api";
@@ -141,6 +154,458 @@ export default function AdminPage() {
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdUsername, setPwdUsername] = useState("");
 
+  // ── Kitoblar (PDF) — localStorage'da saqlanadi ──────────────────────────
+  // BOOK_CATEGORIES — components/ui/data/bookCategories.js'dan import qilingan
+
+  const [books, setBooks] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("admin_books") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [bookForm, setBookForm] = useState({
+    title_uz: "",
+    title_ru: "",
+    author: "",
+    category: BOOK_CATEGORIES[0].key,
+    subcategory: BOOK_CATEGORIES[0].subcategories[0].key,
+    pdfName: "",
+    pdfSize: 0,
+    cover: "",
+  });
+  const [showBookForm, setShowBookForm] = useState(false);
+  const [bookCatFilter, setBookCatFilter] = useState("all");
+  const [bookSubcatFilter, setBookSubcatFilter] = useState("all");
+  const [bookUploading, setBookUploading] = useState(false);
+
+  // PDF'lar uchun IndexedDB
+  const openBookDB = () =>
+    new Promise((resolve, reject) => {
+      const req = indexedDB.open("admin_book_db", 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore("books");
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+  const saveBookBlob = async (id, blob) => {
+    const db = await openBookDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("books", "readwrite");
+      tx.objectStore("books").put(blob, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  };
+
+  const getBookBlob = async (id) => {
+    const db = await openBookDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("books", "readonly");
+      const req = tx.objectStore("books").get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  };
+
+  const deleteBookBlob = async (id) => {
+    const db = await openBookDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("books", "readwrite");
+      tx.objectStore("books").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  };
+
+  const saveBooks = (next) => {
+    setBooks(next);
+    try {
+      localStorage.setItem("admin_books", JSON.stringify(next));
+    } catch (e) {
+      alert(
+        lang === "uz"
+          ? "Metadata saqlash xatoligi"
+          : "Ошибка сохранения метаданных"
+      );
+    }
+  };
+
+  const handleBookCategoryChange = (catKey) => {
+    const cat = findBookCategory(catKey);
+    setBookForm((f) => ({
+      ...f,
+      category: catKey,
+      subcategory: cat?.subcategories?.[0]?.key || "",
+    }));
+  };
+
+  const handlePdfUpload = (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      alert(lang === "uz" ? "Faqat PDF fayl" : "Только PDF файл");
+      return;
+    }
+    setBookForm((f) => ({
+      ...f,
+      pdfName: file.name,
+      pdfSize: file.size,
+      _file: file,
+    }));
+  };
+
+  const handleCoverUpload = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert(lang === "uz" ? "Faqat rasm fayl" : "Только изображение");
+      return;
+    }
+    // Rasmlarni base64'da localStorage'da saqlaymiz (odatda <500KB)
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBookForm((f) => ({ ...f, cover: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const resetBookForm = () => {
+    setBookForm({
+      title_uz: "",
+      title_ru: "",
+      author: "",
+      category: BOOK_CATEGORIES[0].key,
+      subcategory: BOOK_CATEGORIES[0].subcategories[0].key,
+      pdfName: "",
+      pdfSize: 0,
+      cover: "",
+    });
+  };
+
+  const submitBook = async () => {
+    if (!bookForm.title_uz || !bookForm._file) {
+      alert(
+        lang === "uz"
+          ? "Nom va PDF fayl kerak"
+          : "Нужно название и PDF файл"
+      );
+      return;
+    }
+    setBookUploading(true);
+    try {
+      const id = Date.now();
+      // PDF blobni IndexedDB'ga saqlash
+      await saveBookBlob(id, bookForm._file);
+      const newBook = {
+        id,
+        title_uz: bookForm.title_uz,
+        title_ru: bookForm.title_ru,
+        author: bookForm.author,
+        category: bookForm.category,
+        subcategory: bookForm.subcategory,
+        pdfName: bookForm.pdfName,
+        pdfSize: bookForm.pdfSize,
+        cover: bookForm.cover || "",
+        createdAt: new Date().toISOString(),
+      };
+      saveBooks([newBook, ...books]);
+      resetBookForm();
+      setShowBookForm(false);
+    } catch (e) {
+      alert(
+        lang === "uz"
+          ? "Saqlashda xato: " + (e?.message || "")
+          : "Ошибка сохранения: " + (e?.message || "")
+      );
+    } finally {
+      setBookUploading(false);
+    }
+  };
+
+  const deleteBook = async (id) => {
+    if (!confirm(lang === "uz" ? "O'chirilsinmi?" : "Удалить?")) return;
+    try {
+      await deleteBookBlob(id);
+    } catch {}
+    saveBooks(books.filter((b) => b.id !== id));
+  };
+
+  const downloadBook = async (b) => {
+    try {
+      let blob = await getBookBlob(b.id);
+      // Eski kitoblar uchun (base64 saqlanganlar) — fallback
+      if (!blob && b.pdfData) {
+        const res = await fetch(b.pdfData);
+        blob = await res.blob();
+      }
+      if (!blob) {
+        alert(lang === "uz" ? "PDF topilmadi" : "PDF не найден");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = b.pdfName || "kitob.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert(lang === "uz" ? "Yuklab olishda xato" : "Ошибка скачивания");
+    }
+  };
+
+  // ── Video Darsliklar — localStorage + IndexedDB (katta fayllar uchun) ──
+  const VIDEO_CATEGORIES = [
+    { key: "math", uz: "Matematika", ru: "Математика" },
+    { key: "physics", uz: "Fizika", ru: "Физика" },
+    { key: "chemistry", uz: "Kimyo", ru: "Химия" },
+    { key: "biology", uz: "Biologiya", ru: "Биология" },
+    { key: "english", uz: "Ingliz tili", ru: "Английский" },
+    { key: "informatics", uz: "Informatika", ru: "Информатика" },
+    { key: "other", uz: "Boshqa", ru: "Другие" },
+  ];
+
+  const [videos, setVideos] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("admin_videos") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [videoForm, setVideoForm] = useState({
+    title_uz: "",
+    title_ru: "",
+    teacher: "",
+    category: "math",
+    duration: "",
+    videoUrl: "",
+    youtubeId: "",
+    fileName: "",
+    fileSize: 0,
+  });
+  const [videoSourceType, setVideoSourceType] = useState("youtube"); // "youtube" | "file"
+
+  // YouTube link/embed/ID dan video ID ajratish
+  const extractYouTubeId = (input) => {
+    if (!input) return null;
+    const s = input.trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+    let m = s.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = s.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = s.match(/\/embed\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = s.match(/\/shorts\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    const srcMatch = s.match(/src=["']([^"']+)["']/);
+    if (srcMatch) return extractYouTubeId(srcMatch[1]);
+    return null;
+  };
+
+  const handleVideoUrlChange = (value) => {
+    const id = extractYouTubeId(value);
+    setVideoForm((f) => ({ ...f, videoUrl: value, youtubeId: id || "" }));
+  };
+  const [showVideoForm, setShowVideoForm] = useState(false);
+  const [videoCatFilter, setVideoCatFilter] = useState("all");
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+
+  // IndexedDB — videolar uchun (localStorage GB limitsiz emas)
+  const openVideoDB = () =>
+    new Promise((resolve, reject) => {
+      const req = indexedDB.open("admin_video_db", 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore("videos");
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+  const saveVideoBlob = async (id, blob) => {
+    const db = await openVideoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("videos", "readwrite");
+      tx.objectStore("videos").put(blob, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  };
+
+  const getVideoBlob = async (id) => {
+    const db = await openVideoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("videos", "readonly");
+      const req = tx.objectStore("videos").get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  };
+
+  const deleteVideoBlob = async (id) => {
+    const db = await openVideoDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("videos", "readwrite");
+      tx.objectStore("videos").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  };
+
+  const saveVideos = (next) => {
+    setVideos(next);
+    localStorage.setItem("admin_videos", JSON.stringify(next));
+  };
+
+  const handleVideoUpload = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      alert(lang === "uz" ? "Faqat video fayl" : "Только видео файл");
+      return;
+    }
+    setVideoForm((f) => ({
+      ...f,
+      fileName: file.name,
+      fileSize: file.size,
+      _file: file,
+    }));
+  };
+
+  const resetVideoForm = () => {
+    setVideoForm({
+      title_uz: "",
+      title_ru: "",
+      teacher: "",
+      category: "math",
+      duration: "",
+      videoUrl: "",
+      youtubeId: "",
+      fileName: "",
+      fileSize: 0,
+    });
+  };
+
+  const submitVideo = async () => {
+    if (!videoForm.title_uz) {
+      alert(lang === "uz" ? "Nom kerak" : "Нужно название");
+      return;
+    }
+
+    // YouTube manbaa
+    if (videoSourceType === "youtube") {
+      if (!videoForm.youtubeId) {
+        alert(
+          lang === "uz"
+            ? "To'g'ri YouTube link/embed kiriting"
+            : "Введите корректную YouTube ссылку/embed"
+        );
+        return;
+      }
+      const meta = {
+        id: Date.now(),
+        type: "youtube",
+        title_uz: videoForm.title_uz,
+        title_ru: videoForm.title_ru,
+        teacher: videoForm.teacher,
+        category: videoForm.category,
+        duration: videoForm.duration,
+        youtubeId: videoForm.youtubeId,
+        thumbnail: `https://img.youtube.com/vi/${videoForm.youtubeId}/hqdefault.jpg`,
+        createdAt: new Date().toISOString(),
+      };
+      saveVideos([meta, ...videos]);
+      resetVideoForm();
+      setShowVideoForm(false);
+      return;
+    }
+
+    // Fayl manbaa
+    if (!videoForm._file) {
+      alert(lang === "uz" ? "Video fayl kerak" : "Нужен видео файл");
+      return;
+    }
+    setVideoUploading(true);
+    setVideoUploadProgress(0);
+    try {
+      const id = Date.now();
+      const file = videoForm._file;
+      const reader = new FileReader();
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setVideoUploadProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+      reader.onload = async () => {
+        const blob = new Blob([reader.result], { type: file.type });
+        await saveVideoBlob(id, blob);
+        const meta = {
+          id,
+          type: "file",
+          title_uz: videoForm.title_uz,
+          title_ru: videoForm.title_ru,
+          teacher: videoForm.teacher,
+          category: videoForm.category,
+          duration: videoForm.duration,
+          fileName: videoForm.fileName,
+          fileSize: videoForm.fileSize,
+          fileType: file.type,
+          createdAt: new Date().toISOString(),
+        };
+        saveVideos([meta, ...videos]);
+        resetVideoForm();
+        setShowVideoForm(false);
+        setVideoUploading(false);
+        setVideoUploadProgress(0);
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (e) {
+      setVideoUploading(false);
+      alert(lang === "uz" ? "Yuklashda xato" : "Ошибка загрузки");
+    }
+  };
+
+  const deleteVideo = async (id) => {
+    if (!confirm(lang === "uz" ? "O'chirilsinmi?" : "Удалить?")) return;
+    const v = videos.find((x) => x.id === id);
+    if (v?.type !== "youtube") {
+      try {
+        await deleteVideoBlob(id);
+      } catch {}
+    }
+    saveVideos(videos.filter((x) => x.id !== id));
+  };
+
+  const [playingVideo, setPlayingVideo] = useState(null);
+
+  const playVideo = async (v) => {
+    if (v.type === "youtube") {
+      setPlayingVideo(v);
+      return;
+    }
+    try {
+      const blob = await getVideoBlob(v.id);
+      if (!blob) {
+        alert(lang === "uz" ? "Video topilmadi" : "Видео не найдено");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      setPlayingVideo({ ...v, _blobUrl: url });
+    } catch (e) {
+      alert(lang === "uz" ? "Xato" : "Ошибка");
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
   // School form (faqat asosiy fieldlar)
   const EMPTY_SCHOOL = {
     name: "",
@@ -211,9 +676,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (adminLoggedIn) {
       const currentUser = useStore.getState().currentUser;
-      // Agar oddiy admin bo'lsa — /dashboard ga yo'naltirish
+      // Oddiy admin → admin kabineti
       if (currentUser?.role === "admin") {
-        navigate("/dashboard");
+        navigate("/admin-cabinet");
         return;
       }
       // SuperAdmin uchun — ma'lumotlarni yuklash
@@ -242,7 +707,7 @@ export default function AdminPage() {
     // Rol tekshiruvi
     const currentUser = useStore.getState().currentUser;
     if (currentUser?.role === "admin") {
-      navigate("/dashboard");
+      navigate("/admin-cabinet");
     } else if (currentUser?.role === "superadmin") {
       // Shu sahifada qolamiz
     } else {
@@ -439,7 +904,7 @@ export default function AdminPage() {
     {
       key: "users",
       icon: <Users size={18} />,
-      label: lang === "uz" ? "Super adminlar" : "Супер админы",
+      label: lang === "uz" ? "Adminlar" : "Админы",
     },
     {
       key: "schools",
@@ -455,6 +920,21 @@ export default function AdminPage() {
       key: "customers",
       icon: <UserCheck size={18} />,
       label: lang === "uz" ? "Mijozlar" : "Клиенты",
+    },
+    {
+      key: "books",
+      icon: <BookOpen size={18} />,
+      label: lang === "uz" ? "Kitoblar" : "Книги",
+    },
+    {
+      key: "videos",
+      icon: <Video size={18} />,
+      label: lang === "uz" ? "Video Darsliklar" : "Видеоуроки",
+    },
+    {
+      key: "school-books",
+      icon: <GraduationCap size={18} />,
+      label: lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники",
     },
   ];
 
@@ -884,12 +1364,12 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── FOYDALANUVCHILAR ── */}
+        {/* ── ADMINLAR ── */}
         {tab === "users" && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-2xl font-black text-gray-900">
-                {lang === "uz" ? "Super adminlar" : "Супер админы"}
+                {lang === "uz" ? "Adminlar" : "Админы"}
               </h1>
               <button
                 onClick={() => {
@@ -900,30 +1380,30 @@ export default function AdminPage() {
                     password: "",
                     phone: "",
                     school: "",
-                    role: "superadmin",
+                    role: "admin",
                   });
                   setEditUserId(null);
                   setShowUserForm(true);
                 }}
                 className="flex items-center gap-2 bg-[#1a56db] text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-[#1341a8] transition"
               >
-                <Plus size={18} /> {lang === "uz" ? "Qo'shish" : "Добавить"}
+                <Plus size={18} /> {lang === "uz" ? "Admin qo'shish" : "Добавить админа"}
               </button>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               {(() => {
                 const adminList = users.filter(
-                  (u) => u.role === "superadmin"
+                  (u) => u.role === "admin" || u.role === "superadmin"
                 );
                 if (adminList.length === 0) {
                   return (
                     <div className="text-center py-20 text-gray-400">
-                      <div className="text-5xl mb-4">👑</div>
+                      <div className="text-5xl mb-4">👤</div>
                       <p>
                         {lang === "uz"
-                          ? "Super adminlar yo'q"
-                          : "Нет супер админов"}
+                          ? "Adminlar yo'q"
+                          : "Нет админов"}
                       </p>
                     </div>
                   );
@@ -995,12 +1475,37 @@ export default function AdminPage() {
                                 setShowUserForm(true);
                               }}
                               className="p-2 rounded-lg hover:bg-blue-50 text-blue-500 transition"
+                              title={lang === "uz" ? "Tahrirlash" : "Изменить"}
                             >
                               <Edit2 size={15} />
                             </button>
                             <button
+                              onClick={() => {
+                                setPwdResetUser(u);
+                                setPwdUsername(u.username);
+                                setPwdValue("");
+                              }}
+                              className="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition"
+                              title={
+                                lang === "uz"
+                                  ? "Login/Parol almashtirish"
+                                  : "Сменить логин/пароль"
+                              }
+                            >
+                              <KeyRound size={15} />
+                            </button>
+                            <button
                               onClick={() => toggleUserStatus(u.id)}
                               className="p-2 rounded-lg hover:bg-yellow-50 text-yellow-500 transition"
+                              title={
+                                u.active
+                                  ? lang === "uz"
+                                    ? "Bloklash"
+                                    : "Блокировать"
+                                  : lang === "uz"
+                                  ? "Faollashtirish"
+                                  : "Активировать"
+                              }
                             >
                               {u.active ? (
                                 <EyeOff size={15} />
@@ -1008,12 +1513,15 @@ export default function AdminPage() {
                                 <Eye size={15} />
                               )}
                             </button>
-                            <button
-                              onClick={() => deleteUser(u.id)}
-                              className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition"
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                            {u.role !== "superadmin" && (
+                              <button
+                                onClick={() => deleteUser(u.id)}
+                                className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition"
+                                title={lang === "uz" ? "O'chirish" : "Удалить"}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2132,7 +2640,984 @@ export default function AdminPage() {
             })()}
           </div>
         )}
+
+        {/* ════════════════════════ KITOBLAR (PDF) ════════════════════════ */}
+        {tab === "books" && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                  <BookOpen className="text-[#1a56db]" size={26} />
+                  {lang === "uz" ? "Kitoblar" : "Книги"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {lang === "uz"
+                    ? `Jami: ${books.length} ta kitob`
+                    : `Всего: ${books.length} книг`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBookForm(true)}
+                className="flex items-center gap-2 bg-[#1a56db] hover:bg-[#1341a8] text-white px-4 py-2.5 rounded-xl font-bold text-sm transition"
+              >
+                <Plus size={16} />
+                {lang === "uz" ? "Kitob qo'shish" : "Добавить книгу"}
+              </button>
+            </div>
+
+            {/* Kategoriya filter — birinchi qator */}
+            <div className="mb-4">
+              <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
+                {lang === "uz" ? "Asosiy bo'lim" : "Раздел"}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setBookCatFilter("all");
+                    setBookSubcatFilter("all");
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    bookCatFilter === "all"
+                      ? "bg-[#1a56db] text-white"
+                      : "bg-white text-gray-600 border border-gray-200 hover:border-[#1a56db]"
+                  }`}
+                >
+                  {lang === "uz" ? "Barchasi" : "Все"} ({books.length})
+                </button>
+                {BOOK_CATEGORIES.map((c) => {
+                  const count = books.filter(
+                    (b) => b.category === c.key
+                  ).length;
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => {
+                        setBookCatFilter(c.key);
+                        setBookSubcatFilter("all");
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        bookCatFilter === c.key
+                          ? "bg-[#1a56db] text-white"
+                          : "bg-white text-gray-600 border border-gray-200 hover:border-[#1a56db]"
+                      }`}
+                    >
+                      <img
+                        src={c.icon3d}
+                        alt=""
+                        className="w-5 h-5 object-contain"
+                        loading="lazy"
+                      />
+                      {lang === "uz" ? c.uz : c.ru} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Subkategoriya filter — ikkinchi qator (faqat kategoriya tanlanganda) */}
+            {bookCatFilter !== "all" && (
+              <div className="mb-5 pl-3 border-l-4 border-[#1a56db]/30">
+                <div className="text-xs font-bold text-gray-500 mb-2 uppercase">
+                  {lang === "uz" ? "Kichik bo'lim" : "Подраздел"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setBookSubcatFilter("all")}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                      bookSubcatFilter === "all"
+                        ? "bg-blue-50 text-[#1a56db] border border-[#1a56db]"
+                        : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a56db]"
+                    }`}
+                  >
+                    {lang === "uz" ? "Barchasi" : "Все"}
+                  </button>
+                  {(findBookCategory(bookCatFilter)?.subcategories || []).map(
+                    (s) => {
+                      const count = books.filter(
+                        (b) =>
+                          b.category === bookCatFilter &&
+                          b.subcategory === s.key
+                      ).length;
+                      return (
+                        <button
+                          key={s.key}
+                          onClick={() => setBookSubcatFilter(s.key)}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                            bookSubcatFilter === s.key
+                              ? "bg-blue-50 text-[#1a56db] border border-[#1a56db]"
+                              : "bg-white text-gray-500 border border-gray-200 hover:border-[#1a56db]"
+                          }`}
+                        >
+                          {lang === "uz" ? s.uz : s.ru} ({count})
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Kitoblar ro'yxati */}
+            {books.filter(
+              (b) =>
+                (bookCatFilter === "all" || b.category === bookCatFilter) &&
+                (bookSubcatFilter === "all" || b.subcategory === bookSubcatFilter)
+            ).length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <BookOpen className="mx-auto text-gray-300 mb-3" size={48} />
+                <p className="text-gray-500 text-sm">
+                  {lang === "uz"
+                    ? "Hozircha kitoblar yo'q"
+                    : "Книг пока нет"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {books
+                  .filter(
+                    (b) =>
+                      (bookCatFilter === "all" ||
+                        b.category === bookCatFilter) &&
+                      (bookSubcatFilter === "all" ||
+                        b.subcategory === bookSubcatFilter)
+                  )
+                  .map((b) => {
+                    const cat = findBookCategory(b.category);
+                    const sub = findBookSubcategory(b.category, b.subcategory);
+                    return (
+                      <div
+                        key={b.id}
+                        className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition"
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-14 h-20 rounded-lg bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {b.cover ? (
+                              <img
+                                src={b.cover}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : cat?.icon3d ? (
+                              <img
+                                src={cat.icon3d}
+                                alt=""
+                                className="w-9 h-9 object-contain drop-shadow"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-xl">
+                                {cat?.icon || "📕"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-sm text-gray-800 line-clamp-2">
+                              {lang === "uz" ? b.title_uz : b.title_ru || b.title_uz}
+                            </h3>
+                            {b.author && (
+                              <p className="text-xs text-gray-500 truncate mt-0.5">
+                                {b.author}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+                          {cat && (
+                            <span className="bg-amber-50 text-amber-700 font-bold px-2 py-1 rounded-md">
+                              {lang === "uz" ? cat.uz : cat.ru}
+                            </span>
+                          )}
+                          {sub && (
+                            <span className="bg-blue-50 text-[#1a56db] font-bold px-2 py-1 rounded-md">
+                              {lang === "uz" ? sub.uz : sub.ru}
+                            </span>
+                          )}
+                          <span className="text-gray-400 ml-auto">
+                            {formatFileSize(b.pdfSize)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => downloadBook(b)}
+                            className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-[#1a56db] py-2 rounded-lg text-xs font-bold transition"
+                          >
+                            <Download size={13} /> PDF
+                          </button>
+                          <button
+                            onClick={() => deleteBook(b.id)}
+                            className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-xs font-bold transition"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════════════════════════ VIDEO DARSLIKLAR ════════════════════════ */}
+        {tab === "videos" && (
+          <div>
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                  <Video className="text-rose-600" size={26} />
+                  {lang === "uz" ? "Video Darsliklar" : "Видеоуроки"}
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {lang === "uz"
+                    ? `Jami: ${videos.length} ta video • Hajm chegarasi yo'q`
+                    : `Всего: ${videos.length} видео • Без ограничений размера`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowVideoForm(true)}
+                className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition"
+              >
+                <Plus size={16} />
+                {lang === "uz" ? "Video qo'shish" : "Добавить видео"}
+              </button>
+            </div>
+
+            {/* Kategoriya filter */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <button
+                onClick={() => setVideoCatFilter("all")}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
+                  videoCatFilter === "all"
+                    ? "bg-rose-600 text-white"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-rose-600"
+                }`}
+              >
+                {lang === "uz" ? "Barchasi" : "Все"} ({videos.length})
+              </button>
+              {VIDEO_CATEGORIES.map((c) => {
+                const count = videos.filter((v) => v.category === c.key).length;
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => setVideoCatFilter(c.key)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition ${
+                      videoCatFilter === c.key
+                        ? "bg-rose-600 text-white"
+                        : "bg-white text-gray-600 border border-gray-200 hover:border-rose-600"
+                    }`}
+                  >
+                    {lang === "uz" ? c.uz : c.ru} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Videolar ro'yxati */}
+            {videos.filter(
+              (v) => videoCatFilter === "all" || v.category === videoCatFilter
+            ).length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+                <Film className="mx-auto text-gray-300 mb-3" size={48} />
+                <p className="text-gray-500 text-sm">
+                  {lang === "uz"
+                    ? "Hozircha videolar yo'q"
+                    : "Видео пока нет"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {videos
+                  .filter(
+                    (v) =>
+                      videoCatFilter === "all" || v.category === videoCatFilter
+                  )
+                  .map((v) => {
+                    const cat = VIDEO_CATEGORIES.find(
+                      (c) => c.key === v.category
+                    );
+                    return (
+                      <div
+                        key={v.id}
+                        className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition"
+                      >
+                        <button
+                          onClick={() => playVideo(v)}
+                          className="w-full aspect-video bg-gradient-to-br from-rose-100 to-pink-200 flex items-center justify-center group relative overflow-hidden"
+                        >
+                          {v.type === "youtube" && v.thumbnail && (
+                            <img
+                              src={v.thumbnail}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition" />
+                          <div className="relative w-14 h-14 rounded-full bg-white/95 flex items-center justify-center group-hover:scale-110 transition shadow-lg">
+                            <Play
+                              className="text-rose-600 ml-1"
+                              size={22}
+                              fill="currentColor"
+                            />
+                          </div>
+                          {v.type === "youtube" && (
+                            <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded">
+                              YouTube
+                            </span>
+                          )}
+                          {v.duration && (
+                            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-0.5 rounded">
+                              {v.duration}
+                            </span>
+                          )}
+                        </button>
+                        <div className="p-3">
+                          <h3 className="font-black text-sm text-gray-800 line-clamp-2 mb-1">
+                            {lang === "uz" ? v.title_uz : v.title_ru || v.title_uz}
+                          </h3>
+                          {v.teacher && (
+                            <p className="text-xs text-gray-500 mb-2">
+                              {v.teacher}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mb-3 text-xs">
+                            <span className="bg-rose-50 text-rose-700 font-bold px-2 py-1 rounded-md">
+                              {lang === "uz" ? cat?.uz : cat?.ru}
+                            </span>
+                            {v.type !== "youtube" && (
+                              <span className="text-gray-400">
+                                {formatFileSize(v.fileSize)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => playVideo(v)}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-lg text-xs font-bold transition"
+                            >
+                              <Play size={13} />
+                              {lang === "uz" ? "Ko'rish" : "Смотреть"}
+                            </button>
+                            <button
+                              onClick={() => deleteVideo(v.id)}
+                              className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-xs font-bold transition"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ════════════════════════ MAKTAB DARSLIKLARI (Coming Soon) ════════════════════════ */}
+        {tab === "school-books" && (
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-6">
+              <GraduationCap className="text-emerald-600" size={26} />
+              {lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники"}
+            </h1>
+
+            <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-200 flex items-center justify-center">
+                <Construction className="text-emerald-600" size={36} />
+              </div>
+              <h2 className="font-black text-xl text-gray-800 mb-2">
+                {lang === "uz" ? "Tez orada" : "Скоро"}
+              </h2>
+              <p className="text-gray-500 text-sm max-w-md mx-auto">
+                {lang === "uz"
+                  ? "Bu bo'lim ishlab chiqilmoqda. Yaqin orada 1-11 sinflar uchun rasmiy darsliklarni yuklash imkoniyati qo'shiladi."
+                  : "Этот раздел в разработке. Скоро будет добавлена возможность загрузки официальных учебников для 1-11 классов."}
+              </p>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* ── KITOB QO'SHISH FORMASI (Modal) ── */}
+      {showBookForm && (
+        <div
+          onClick={() => !bookUploading && setShowBookForm(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
+              <h2 className="font-black text-lg text-gray-900 flex items-center gap-2">
+                <BookOpen className="text-[#1a56db]" size={20} />
+                {lang === "uz" ? "Yangi kitob" : "Новая книга"}
+              </h2>
+              <button
+                onClick={() => !bookUploading && setShowBookForm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Nomi (UZ)" : "Название (UZ)"} *
+                </label>
+                <input
+                  type="text"
+                  value={bookForm.title_uz}
+                  onChange={(e) =>
+                    setBookForm({ ...bookForm, title_uz: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  placeholder={
+                    lang === "uz" ? "Kitob nomi..." : "Название книги..."
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Nomi (RU)" : "Название (RU)"}
+                </label>
+                <input
+                  type="text"
+                  value={bookForm.title_ru}
+                  onChange={(e) =>
+                    setBookForm({ ...bookForm, title_ru: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  placeholder="Название..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Muallif" : "Автор"}
+                </label>
+                <input
+                  type="text"
+                  value={bookForm.author}
+                  onChange={(e) =>
+                    setBookForm({ ...bookForm, author: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  placeholder={lang === "uz" ? "Muallif ismi" : "Имя автора"}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Asosiy bo'lim" : "Раздел"} *
+                </label>
+                <select
+                  value={bookForm.category}
+                  onChange={(e) => handleBookCategoryChange(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
+                >
+                  {BOOK_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.icon} {lang === "uz" ? c.uz : c.ru}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Kichik bo'lim" : "Подраздел"} *
+                </label>
+                <select
+                  value={bookForm.subcategory}
+                  onChange={(e) =>
+                    setBookForm({ ...bookForm, subcategory: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
+                >
+                  {(findBookCategory(bookForm.category)?.subcategories || []).map(
+                    (s) => (
+                      <option key={s.key} value={s.key}>
+                        {lang === "uz" ? s.uz : s.ru}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Muqova rasmi" : "Обложка"}{" "}
+                  <span className="text-gray-400 font-normal">
+                    ({lang === "uz" ? "ixtiyoriy" : "необязательно"})
+                  </span>
+                </label>
+
+                {/* Preview */}
+                {bookForm.cover && (
+                  <div className="relative group mb-2">
+                    <img
+                      src={bookForm.cover}
+                      alt="Cover preview"
+                      className="w-full h-48 object-contain bg-gray-50 rounded-xl border border-gray-200"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setBookForm({ ...bookForm, cover: "" })}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Fayl yuklash */}
+                <label className="block cursor-pointer mb-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleCoverUpload(e.target.files?.[0])}
+                    className="hidden"
+                  />
+                  <div className="border-2 border-dashed border-gray-200 hover:border-[#1a56db] rounded-xl p-4 text-center transition">
+                    <Upload className="mx-auto text-gray-400 mb-1" size={22} />
+                    <div className="text-xs text-gray-600 font-medium">
+                      {bookForm.cover
+                        ? lang === "uz"
+                          ? "Boshqa rasm tanlash"
+                          : "Выбрать другое"
+                        : lang === "uz"
+                        ? "Fayl tanlash (JPG, PNG, WebP)"
+                        : "Выбрать файл (JPG, PNG, WebP)"}
+                    </div>
+                  </div>
+                </label>
+
+                {/* URL */}
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold pointer-events-none">
+                    URL
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/cover.jpg"
+                    value={
+                      bookForm.cover?.startsWith("http") ? bookForm.cover : ""
+                    }
+                    onChange={(e) =>
+                      setBookForm({ ...bookForm, cover: e.target.value })
+                    }
+                    className="w-full border border-gray-200 rounded-xl pl-12 pr-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "PDF fayl" : "PDF файл"} *
+                </label>
+                <label className="block cursor-pointer">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => handlePdfUpload(e.target.files?.[0])}
+                    className="hidden"
+                  />
+                  <div className="border-2 border-dashed border-gray-200 hover:border-[#1a56db] rounded-xl p-6 text-center transition">
+                    {bookForm.pdfName ? (
+                      <div>
+                        <FileText
+                          className="mx-auto text-[#1a56db] mb-2"
+                          size={32}
+                        />
+                        <div className="text-sm font-bold text-gray-800 truncate">
+                          {bookForm.pdfName}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {formatFileSize(bookForm.pdfSize)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <Upload
+                          className="mx-auto text-gray-400 mb-2"
+                          size={32}
+                        />
+                        <div className="text-sm text-gray-600 font-medium">
+                          {lang === "uz"
+                            ? "PDF fayl tanlang (hajm chegarasi yo'q)"
+                            : "Выберите PDF файл (без ограничений)"}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowBookForm(false)}
+                  disabled={bookUploading}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+                >
+                  {lang === "uz" ? "Bekor" : "Отмена"}
+                </button>
+                <button
+                  onClick={submitBook}
+                  disabled={bookUploading || !bookForm.pdfName}
+                  className="flex-1 bg-[#1a56db] hover:bg-[#1341a8] text-white py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+                >
+                  {bookUploading
+                    ? lang === "uz"
+                      ? "Saqlanmoqda..."
+                      : "Сохранение..."
+                    : lang === "uz"
+                    ? "Saqlash"
+                    : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIDEO QO'SHISH FORMASI (Modal) ── */}
+      {showVideoForm && (
+        <div
+          onClick={() => !videoUploading && setShowVideoForm(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between">
+              <h2 className="font-black text-lg text-gray-900 flex items-center gap-2">
+                <Video className="text-rose-600" size={20} />
+                {lang === "uz" ? "Yangi video" : "Новое видео"}
+              </h2>
+              <button
+                onClick={() => !videoUploading && setShowVideoForm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Nomi (UZ)" : "Название (UZ)"} *
+                </label>
+                <input
+                  type="text"
+                  value={videoForm.title_uz}
+                  onChange={(e) =>
+                    setVideoForm({ ...videoForm, title_uz: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+                  placeholder={
+                    lang === "uz" ? "Video nomi..." : "Название видео..."
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Nomi (RU)" : "Название (RU)"}
+                </label>
+                <input
+                  type="text"
+                  value={videoForm.title_ru}
+                  onChange={(e) =>
+                    setVideoForm({ ...videoForm, title_ru: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+                  placeholder="Название..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                    {lang === "uz" ? "O'qituvchi" : "Преподаватель"}
+                  </label>
+                  <input
+                    type="text"
+                    value={videoForm.teacher}
+                    onChange={(e) =>
+                      setVideoForm({ ...videoForm, teacher: e.target.value })
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+                    placeholder={lang === "uz" ? "Ism" : "Имя"}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                    {lang === "uz" ? "Davomiyligi" : "Длит."}
+                  </label>
+                  <input
+                    type="text"
+                    value={videoForm.duration}
+                    onChange={(e) =>
+                      setVideoForm({ ...videoForm, duration: e.target.value })
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+                    placeholder="12:30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Fan" : "Предмет"} *
+                </label>
+                <select
+                  value={videoForm.category}
+                  onChange={(e) =>
+                    setVideoForm({ ...videoForm, category: e.target.value })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600 bg-white"
+                >
+                  {VIDEO_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {lang === "uz" ? c.uz : c.ru}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Manbaa tanlash */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  {lang === "uz" ? "Video manbai" : "Источник видео"} *
+                </label>
+                <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setVideoSourceType("youtube")}
+                    className={`py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
+                      videoSourceType === "youtube"
+                        ? "bg-white text-rose-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    <Video size={15} />
+                    YouTube
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVideoSourceType("file")}
+                    className={`py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
+                      videoSourceType === "file"
+                        ? "bg-white text-rose-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    <Upload size={15} />
+                    {lang === "uz" ? "Fayl" : "Файл"}
+                  </button>
+                </div>
+              </div>
+
+              {/* YouTube link/embed */}
+              {videoSourceType === "youtube" && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                    {lang === "uz"
+                      ? "YouTube link yoki embed kod"
+                      : "YouTube ссылка или embed код"}{" "}
+                    *
+                  </label>
+                  <textarea
+                    value={videoForm.videoUrl}
+                    onChange={(e) => handleVideoUrlChange(e.target.value)}
+                    rows={3}
+                    placeholder={
+                      lang === "uz"
+                        ? "https://www.youtube.com/watch?v=...\nyoki <iframe src='...'></iframe> embed kodini joylashtiring"
+                        : "https://www.youtube.com/watch?v=...\nили вставьте <iframe> embed код"
+                    }
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600 resize-none font-mono"
+                  />
+
+                  {/* Preview */}
+                  {videoForm.youtubeId && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-gray-200">
+                      <div className="aspect-video bg-black">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${videoForm.youtubeId}`}
+                          title="Preview"
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                      <div className="bg-green-50 px-3 py-2 text-xs text-green-700 font-bold flex items-center gap-1">
+                        <Check size={13} />
+                        {lang === "uz"
+                          ? `Aniqlandi: ${videoForm.youtubeId}`
+                          : `Найдено: ${videoForm.youtubeId}`}
+                      </div>
+                    </div>
+                  )}
+                  {videoForm.videoUrl && !videoForm.youtubeId && (
+                    <p className="mt-2 text-xs text-red-600 font-bold">
+                      {lang === "uz"
+                        ? "❌ Video ID topilmadi. To'g'ri YouTube link yoki embed kod kiriting."
+                        : "❌ Video ID не найден. Введите правильную ссылку или embed."}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Fayl yuklash */}
+              {videoSourceType === "file" && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                    {lang === "uz" ? "Video fayl" : "Видео файл"} *
+                  </label>
+                  <label className="block cursor-pointer">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleVideoUpload(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                    <div className="border-2 border-dashed border-gray-200 hover:border-rose-600 rounded-xl p-6 text-center transition">
+                      {videoForm.fileName ? (
+                        <div>
+                          <Film
+                            className="mx-auto text-rose-600 mb-2"
+                            size={32}
+                          />
+                          <div className="text-sm font-bold text-gray-800 truncate">
+                            {videoForm.fileName}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {formatFileSize(videoForm.fileSize)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <Upload
+                            className="mx-auto text-gray-400 mb-2"
+                            size={32}
+                          />
+                          <div className="text-sm text-gray-600 font-medium">
+                            {lang === "uz"
+                              ? "Video fayl tanlang (hajm chegarasi yo'q)"
+                              : "Выберите видео файл (без ограничений)"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {videoUploading && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <span>{lang === "uz" ? "Yuklanmoqda" : "Загрузка"}</span>
+                    <span className="font-bold">{videoUploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-rose-600 h-full transition-all"
+                      style={{ width: `${videoUploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowVideoForm(false)}
+                  disabled={videoUploading}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+                >
+                  {lang === "uz" ? "Bekor" : "Отмена"}
+                </button>
+                <button
+                  onClick={submitVideo}
+                  disabled={
+                    videoUploading ||
+                    (videoSourceType === "youtube" && !videoForm.youtubeId) ||
+                    (videoSourceType === "file" && !videoForm.fileName)
+                  }
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50"
+                >
+                  {videoUploading
+                    ? lang === "uz"
+                      ? "Yuklanmoqda..."
+                      : "Загрузка..."
+                    : lang === "uz"
+                    ? "Saqlash"
+                    : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIDEO PLAYER (Modal) ── */}
+      {playingVideo && (
+        <div
+          onClick={() => {
+            if (playingVideo._blobUrl) URL.revokeObjectURL(playingVideo._blobUrl);
+            setPlayingVideo(null);
+          }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-black text-base text-gray-800 truncate">
+                {lang === "uz"
+                  ? playingVideo.title_uz
+                  : playingVideo.title_ru || playingVideo.title_uz}
+              </h3>
+              <button
+                onClick={() => {
+                  if (playingVideo._blobUrl)
+                    URL.revokeObjectURL(playingVideo._blobUrl);
+                  setPlayingVideo(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-3"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="aspect-video bg-black">
+              {playingVideo.type === "youtube" ? (
+                <iframe
+                  src={`https://www.youtube.com/embed/${playingVideo.youtubeId}?autoplay=1`}
+                  title={playingVideo.title_uz}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={playingVideo._blobUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MAKTAB FORMASI (Modal) ── */}
       {showSchoolForm && (
@@ -2714,11 +4199,11 @@ export default function AdminPage() {
               <h2 className="font-black text-lg">
                 {editUserId
                   ? lang === "uz"
-                    ? "Foydalanuvchini tahrirlash"
-                    : "Редактировать пользователя"
+                    ? "Adminni tahrirlash"
+                    : "Редактировать админа"
                   : lang === "uz"
-                  ? "Yangi foydalanuvchi"
-                  : "Новый пользователь"}
+                  ? "Yangi admin"
+                  : "Новый админ"}
               </h2>
               <button
                 onClick={() => setShowUserForm(false)}
@@ -2740,21 +4225,13 @@ export default function AdminPage() {
                   type: "text",
                 },
                 {
-                  key: "username",
-                  label:
-                    lang === "uz"
-                      ? "Telefon / Username *"
-                      : "Телефон / Username *",
-                  type: "text",
-                },
-                {
                   key: "phone",
                   label: lang === "uz" ? "Telefon raqam" : "Номер телефона",
                   type: "tel",
                 },
                 {
-                  key: "school",
-                  label: lang === "uz" ? "Qaysi maktabdan" : "Школа",
+                  key: "username",
+                  label: "Username *",
                   type: "text",
                 },
                 {
@@ -2784,9 +4261,6 @@ export default function AdminPage() {
                       setUserForm({
                         ...userForm,
                         [field.key]: value,
-                        ...(field.key === "username" && !userForm.phone
-                          ? { phone: raw }
-                          : {}),
                       });
                     }}
                     className={`w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] ${
@@ -2796,19 +4270,46 @@ export default function AdminPage() {
                 </div>
               ))}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Rol
+                <label className="block text-xs font-semibold text-gray-600 mb-2">
+                  {lang === "uz" ? "Rol *" : "Роль *"}
                 </label>
-                <select
-                  value={userForm.role}
-                  onChange={(e) =>
-                    setUserForm({ ...userForm, role: e.target.value })
-                  }
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db] bg-white"
-                >
-                  <option value="admin">admin</option>
-                  <option value="superadmin">superadmin</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUserForm({ ...userForm, role: "admin" })}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition border-2 ${
+                      userForm.role === "admin"
+                        ? "bg-blue-50 border-[#1a56db] text-[#1a56db]"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <Users size={16} />
+                    Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUserForm({ ...userForm, role: "superadmin" })
+                    }
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition border-2 ${
+                      userForm.role === "superadmin"
+                        ? "bg-purple-50 border-purple-600 text-purple-700"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <KeyRound size={16} />
+                    Super Admin
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+                  {userForm.role === "superadmin"
+                    ? lang === "uz"
+                      ? "✓ To'liq huquqlar: maktablar, o'quvchilar, mahsulotlar, adminlar"
+                      : "✓ Полные права: школы, ученики, товары, админы"
+                    : lang === "uz"
+                    ? "✓ Cheklangan: faqat buyurtmalar, kitoblar va video darsliklar"
+                    : "✓ Ограниченный: только заказы, книги и видеоуроки"}
+                </p>
               </div>
             </div>
             <div className="flex gap-3 px-6 py-4 border-t">

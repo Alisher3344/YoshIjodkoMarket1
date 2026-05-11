@@ -47,10 +47,8 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {[
                 { label: t("home"), path: "/" },
-                { label: t("catalog"), path: "/catalog" },
                 { label: t("about"), path: "/about" },
                 { label: t("contact"), path: "/contact" },
-                { label: t("adminPanel"), path: "/admin" },
               ].map((link) => (
                 <li key={link.path}>
                   <button

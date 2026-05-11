@@ -5,9 +5,14 @@ import Footer from "./components/layout/Footer";
 import CartDrawer from "./components/ui/CartDrawer";
 import HomePage from "./pages/HomePage";
 import CatalogPage from "./pages/CatalogPage";
+import IjodlarPage from "./pages/IjodlarPage";
+import KitoblarPage from "./pages/KitoblarPage";
+import VideoDarsliklarPage from "./pages/VideoDarsliklarPage";
+import MaktabDarsliklariPage from "./pages/MaktabDarsliklariPage";
 import ProductPage from "./pages/ProductPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import AdminPage from "./pages/AdminPage";
+import AdminCabinetPage from "./pages/AdminCabinetPage";
 import CustomOrderPage from "./pages/CustomOrderPage";
 import AuthPage from "./pages/AuthPage";
 import CabinetPage from "./pages/CabinetPage";
@@ -54,6 +59,38 @@ export default function App() {
           }
         />
         <Route
+          path="/ijodlar/catalog"
+          element={
+            <Layout>
+              <IjodlarPage />
+            </Layout>
+          }
+        />
+        <Route
+          path="/kitoblar/catalog"
+          element={
+            <Layout>
+              <KitoblarPage />
+            </Layout>
+          }
+        />
+        <Route
+          path="/video-darsliklar/catalog"
+          element={
+            <Layout>
+              <VideoDarsliklarPage />
+            </Layout>
+          }
+        />
+        <Route
+          path="/maktab-darsliklari/catalog"
+          element={
+            <Layout>
+              <MaktabDarsliklariPage />
+            </Layout>
+          }
+        />
+        <Route
           path="/product/:id"
           element={
             <Layout>
@@ -96,6 +133,7 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/cabinet" element={<CabinetPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin-cabinet" element={<AdminCabinetPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
       </Routes>
     </HashRouter>

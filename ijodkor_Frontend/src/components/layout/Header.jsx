@@ -14,6 +14,10 @@ import {
   Info,
   MessageCircle,
   Zap,
+  BookOpen,
+  Video,
+  GraduationCap,
+  Palette,
 } from "lucide-react";
 import useStore from "../../store/useStore";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -119,109 +123,110 @@ export default function Header() {
     { label: t("contact"), path: "/contact", icon: MessageCircle },
   ];
 
+  const subNavLinks = [
+    {
+      label: lang === "uz" ? "Ijodlar" : "Творчество",
+      shortLabel: lang === "uz" ? "Ijod" : "Творч.",
+      key: "ijodlar",
+      path: "/ijodlar/catalog",
+      icon: Palette,
+      isDefault: true,
+    },
+    {
+      label: lang === "uz" ? "Kitoblar" : "Книги",
+      shortLabel: lang === "uz" ? "Kitob" : "Книги",
+      key: "kitoblar",
+      path: "/kitoblar/catalog",
+      icon: BookOpen,
+    },
+    {
+      label: lang === "uz" ? "Video Darsliklar" : "Видеоуроки",
+      shortLabel: lang === "uz" ? "Video" : "Видео",
+      key: "videos",
+      path: "/video-darsliklar/catalog",
+      icon: Video,
+    },
+    {
+      label: lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники",
+      shortLabel: lang === "uz" ? "Maktab" : "Школа",
+      key: "school-books",
+      path: "/maktab-darsliklari/catalog",
+      icon: GraduationCap,
+    },
+  ];
+
+  const handleSubNavClick = (link) => {
+    navigate(link.path);
+    setMenuOpen(false);
+  };
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-3 sm:px-4">
           {/* ══════════════════════ TOP ROW ══════════════════════ */}
-          <div className="flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3">
-            {/* Logo — har xil ekranlarda har xil ko'rinish */}
-            <a
-              href="/"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate("/");
-              }}
-              className="flex items-center gap-2 flex-shrink-0"
-            >
-              {/* Katta ekranda 2 ta logo */}
-              <TransparentImg
-                src="/logo-smart.png"
-                alt="SMART"
-                className="hidden lg:block h-9 xl:h-10 object-contain"
-              />
-              <div className="hidden lg:block w-px h-8 bg-gray-200" />
-              <TransparentImg
-                src="/logo-maktab.png"
-                alt="Yoshijodkor"
-                className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 object-contain"
-              />
-              <div className="hidden xl:block">
-                <div className="text-gray-700 text-[10px] leading-snug max-w-52 font-semibold">
-                  {lang === "uz"
-                    ? "Qashqadaryo viloyati maktabgacha va maktab ta'limi boshqarmasi bilan hamkorlikda"
-                    : "В сотрудничестве с управлением образования Кашкадарьинской области"}
-                </div>
-              </div>
-            </a>
-
-            {/* Categories button (faqat desktop) */}
-            <div
-              ref={catRef}
-              className="relative hidden lg:block flex-shrink-0"
-            >
-              <button
-                onClick={() => setCatOpen(!catOpen)}
-                className="flex items-center gap-2 bg-[#1a56db] text-white px-3 xl:px-4 py-2.5 rounded-lg font-semibold text-xs xl:text-sm hover:bg-[#1341a8] transition whitespace-nowrap"
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 py-2 sm:py-2.5 md:py-3">
+            {/* Logo */}
+            <div className="flex items-center flex-shrink-0">
+              <a
+                href="/"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/");
+                }}
+                className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
               >
-                <Menu size={16} />
-                <span>{t("allCategories")}</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${
-                    catOpen ? "rotate-180" : ""
-                  }`}
+                <TransparentImg
+                  src="/logo-smart.png"
+                  alt="SMART"
+                  className="block h-6 sm:h-7 md:h-8 lg:h-9 xl:h-10 object-contain"
                 />
-              </button>
-              {catOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-2xl border border-gray-100 min-w-52 z-50 overflow-hidden max-h-[70vh] overflow-y-auto">
-                  {Object.entries(cats).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleCatSelect(key)}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 hover:text-[#1a56db] transition flex items-center gap-2 font-medium"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
+                <div className="block w-px h-5 sm:h-6 md:h-7 lg:h-8 bg-gray-200" />
+                <TransparentImg
+                  src="/logo-maktab.png"
+                  alt="Yoshijodkor"
+                  className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 xl:w-12 xl:h-12 object-contain"
+                />
+              </a>
             </div>
 
-            {/* Search — desktop */}
-            <form onSubmit={handleSearch} className="flex-1 hidden md:block">
+            {/* Search — desktop (md+) */}
+            <form onSubmit={handleSearch} className="flex-1 hidden md:block min-w-0">
               <div className="flex bg-gray-100 rounded-xl overflow-hidden border border-gray-200 hover:border-[#1a56db] focus-within:border-[#1a56db] transition">
                 <input
                   type="text"
                   placeholder={t("search")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none min-w-0"
+                  className="flex-1 min-w-0 bg-transparent px-3 lg:px-4 py-2 lg:py-2.5 text-sm outline-none"
                 />
                 <button
                   type="submit"
-                  className="bg-[#f97316] hover:bg-[#c2570d] text-white px-4 sm:px-5 py-2.5 transition font-semibold text-sm flex-shrink-0"
+                  className="bg-[#f97316] hover:bg-[#c2570d] text-white px-3 sm:px-4 lg:px-5 py-2 lg:py-2.5 transition font-semibold text-sm flex-shrink-0"
                 >
                   <Search size={16} />
                 </button>
               </div>
             </form>
 
+            {/* Spacer — mobile */}
+            <div className="flex-1 md:hidden" />
+
             {/* Search ikonasi — mobile */}
             <button
               onClick={() => setSearchMobile(!searchMobile)}
-              className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition flex-shrink-0"
             >
-              <Search size={17} className="text-gray-600" />
+              <Search size={16} className="text-gray-600" />
             </button>
 
             {/* Right actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              {/* Til — desktop */}
-              <div className="hidden sm:flex bg-gray-100 rounded-lg overflow-hidden text-xs font-bold">
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 flex-shrink-0">
+              {/* Til — sm+ */}
+              <div className="hidden sm:flex bg-gray-100 rounded-lg overflow-hidden text-[11px] md:text-xs font-bold">
                 <button
                   onClick={() => setLang("uz")}
-                  className={`px-2.5 sm:px-3 py-2 transition ${
+                  className={`px-2 md:px-2.5 lg:px-3 py-1.5 md:py-2 transition ${
                     lang === "uz"
                       ? "bg-[#1a56db] text-white"
                       : "text-gray-600 hover:bg-gray-200"
@@ -231,7 +236,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={() => setLang("ru")}
-                  className={`px-2.5 sm:px-3 py-2 transition ${
+                  className={`px-2 md:px-2.5 lg:px-3 py-1.5 md:py-2 transition ${
                     lang === "ru"
                       ? "bg-[#1a56db] text-white"
                       : "text-gray-600 hover:bg-gray-200"
@@ -297,7 +302,7 @@ export default function Header() {
               {/* Dark mode */}
               <button
                 onClick={toggleDarkMode}
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+                className="hidden sm:flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition flex-shrink-0"
                 title={
                   darkMode
                     ? lang === "uz"
@@ -318,14 +323,14 @@ export default function Header() {
               {/* Cart */}
               <button
                 onClick={handleCartClick}
-                className="flex items-center gap-2 bg-[#f97316] hover:bg-[#c2570d] text-white px-2.5 sm:px-3 py-2 rounded-lg transition relative"
+                className="flex items-center gap-1.5 lg:gap-2 bg-[#f97316] hover:bg-[#c2570d] text-white px-2 sm:px-2.5 md:px-3 py-2 rounded-lg transition relative flex-shrink-0"
               >
-                <ShoppingCart size={17} />
+                <ShoppingCart size={16} className="lg:w-[17px] lg:h-[17px]" />
                 <span className="hidden lg:block text-sm font-semibold">
                   {t("cart")}
                 </span>
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold bounce-badge ring-2 ring-white">
+                  <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[10px] sm:text-[11px] min-w-[18px] h-[18px] sm:min-w-5 sm:h-5 px-1 rounded-full flex items-center justify-center font-bold bounce-badge ring-2 ring-white">
                     {cartCount > 99 ? "99+" : cartCount}
                   </span>
                 )}
@@ -334,9 +339,10 @@ export default function Header() {
               {/* Mobile menu toggle */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="lg:hidden bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition"
+                className="lg:hidden bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition flex-shrink-0"
+                aria-label="Menu"
               >
-                {menuOpen ? <X size={19} /> : <Menu size={19} />}
+                {menuOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
           </div>
@@ -363,38 +369,56 @@ export default function Header() {
             </form>
           )}
 
-          {/* ══════════════════════ DESKTOP NAV ══════════════════════ */}
-          <nav className="hidden lg:flex items-center gap-1 pb-2 border-t border-gray-100 pt-2">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const active = currentPath === link.path;
-              return (
-                <button
-                  key={link.path}
-                  onClick={() => navigate(link.path)}
-                  className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition ${
-                    active
-                      ? "bg-blue-50 text-[#1a56db]"
-                      : "text-gray-600 hover:text-[#1a56db] hover:bg-blue-50"
-                  }`}
-                >
-                  <Icon size={14} />
-                  {link.label}
-                </button>
-              );
-            })}
+        </div>
 
-            <button
-              onClick={() => {
-                setSelectedCategory("custom");
-                navigate("/catalog");
-              }}
-              className="ml-auto flex items-center gap-1.5 bg-gradient-to-r from-[#f97316] to-[#ef4444] hover:from-[#c2570d] hover:to-[#dc2626] text-white text-sm font-bold px-5 py-1.5 rounded-full shadow-md hover:shadow-lg transition-all"
-            >
-              <Zap size={14} className="fill-white" />
-              {lang === "uz" ? "Buyurtma berish" : "Заказать"}
-            </button>
-          </nav>
+        {/* ══════════════════════ SECTIONS NAV ══════════════════════ */}
+        <div className="bg-white border-t border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4">
+            <nav className="flex items-stretch justify-between sm:justify-center sm:gap-6 md:gap-10 lg:gap-14 overflow-x-auto scrollbar-hide">
+              {subNavLinks.map((link) => {
+                const Icon = link.icon;
+                const onAnySection = subNavLinks.some(
+                  (l) => l.path === currentPath
+                );
+                const active = link.isDefault
+                  ? currentPath === link.path || !onAnySection
+                  : currentPath === link.path;
+                return (
+                  <button
+                    key={link.key}
+                    onClick={() => handleSubNavClick(link)}
+                    className={`relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 flex-1 sm:flex-initial min-w-0 py-2 sm:py-3 md:py-3.5 px-1 sm:px-0 whitespace-nowrap transition-colors ${
+                      active
+                        ? "text-[#1a56db]"
+                        : "text-gray-600 hover:text-[#1a56db]"
+                    }`}
+                  >
+                    <Icon
+                      size={18}
+                      className="sm:w-4 sm:h-4"
+                      strokeWidth={active ? 2.2 : 1.8}
+                    />
+                    <span
+                      className={`text-[10px] sm:text-sm md:text-[15px] tracking-tight ${
+                        active ? "font-bold sm:font-semibold" : "font-medium"
+                      }`}
+                    >
+                      <span className="sm:hidden">{link.shortLabel}</span>
+                      <span className="hidden sm:inline">{link.label}</span>
+                    </span>
+                    <span
+                      className={`absolute left-1 right-1 sm:left-0 sm:right-0 -bottom-[1px] h-[2px] rounded-full transition-all ${
+                        active
+                          ? "bg-[#1a56db] opacity-100 scale-x-100"
+                          : "bg-[#1a56db] opacity-0 scale-x-50"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
         </div>
       </header>
 
@@ -508,6 +532,31 @@ export default function Header() {
               })}
             </div>
 
+            {/* Sub Nav — Ijodlar / Kitoblar / Video / Maktab */}
+            <div className="p-3 border-t border-gray-100">
+              <div className="text-xs font-bold text-gray-400 uppercase px-3 mb-2">
+                {lang === "uz" ? "Bo'limlar" : "Разделы"}
+              </div>
+              {subNavLinks.map((link) => {
+                const Icon = link.icon;
+                const active = currentPath === link.path;
+                return (
+                  <button
+                    key={link.key}
+                    onClick={() => handleSubNavClick(link)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition ${
+                      active
+                        ? "bg-blue-50 text-[#1a56db]"
+                        : "text-gray-700 hover:bg-blue-50 hover:text-[#1a56db]"
+                    }`}
+                  >
+                    <Icon size={18} className="text-[#1a56db]" />
+                    {link.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Categories */}
             <div className="p-3 border-t border-gray-100">
               <div className="text-xs font-bold text-gray-400 uppercase px-3 mb-2">
@@ -577,7 +626,14 @@ export default function Header() {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes slideRight {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
         .animate-slideDown { animation: slideDown 0.2s ease-out; }
+        .animate-slideRight { animation: slideRight 0.25s ease-out; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </>
   );
