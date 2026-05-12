@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import text, select
 from app.core.database import engine, Base, AsyncSessionLocal
+from app.core.security import hash_password
+from app.models.user import User
 from app.routes import auth, products, orders, custom_orders, users, contact, students, schools, telegram, regions
 from app.seed_regions import seed_regions_if_empty
 
@@ -55,6 +57,37 @@ async def lifespan(app: FastAPI):
                 print("SKIP seed: regions jadvali allaqachon to'la")
     except Exception as e:
         print(f"SKIP seed regions ({type(e).__name__}): {e}")
+
+    # Default admin/admin123 superadmin avtomatik yaratish (yo'q bo'lsa)
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(User).where(User.username == "admin")
+            )
+            existing = result.scalar_one_or_none()
+            if not existing:
+                session.add(User(
+                    name="Bosh Admin",
+                    full_name="Bosh Admin",
+                    username="admin",
+                    password=hash_password("admin123"),
+                    phone="",
+                    school="",
+                    avatar="",
+                    role="superadmin",
+                    active=True,
+                ))
+                await session.commit()
+                print("OK seed: default admin yaratildi (username=admin, parol=admin123)")
+            else:
+                # Parolni "admin123" ga reset qilish (faqat sukut bo'yicha login uchun)
+                from app.core.security import verify_password
+                if not verify_password("admin123", existing.password):
+                    print("INFO: 'admin' user mavjud, parol boshqa — o'zgartirilmadi")
+                else:
+                    print("SKIP seed: 'admin' user allaqachon mavjud")
+    except Exception as e:
+        print(f"SKIP seed admin ({type(e).__name__}): {e}")
 
     print("=== Registered routes ===")
     for route in app.routes:
