@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { CheckCircle, ArrowLeft, Copy, X } from "lucide-react";
 import useStore from "../store/useStore";
 import { formatPhone } from "../utils/phone";
+import Emoji3d from "../components/ui/Emoji3d";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -345,7 +346,7 @@ export default function CheckoutPage() {
                     onChange={() => setForm({ ...form, payment: m.key })}
                     className="accent-[#1a56db]"
                   />
-                  <span>{m.icon}</span>
+                  <Emoji3d e={m.icon} size={22} />
                   <span className="text-sm font-semibold text-gray-700">
                     {m.label}
                   </span>

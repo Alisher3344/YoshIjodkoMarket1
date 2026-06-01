@@ -12,6 +12,7 @@ import useStore from "../store/useStore";
 import { featuredCategories } from "../components/ui/data/products";
 import { categoryLabels } from "../components/ui/data/translations";
 import ProductCard from "../components/product/ProductCard";
+import Emoji3d from "../components/ui/Emoji3d";
 
 export default function HomePage() {
   const {
@@ -279,7 +280,7 @@ export default function HomePage() {
               onClick={() => handleCat(cat.key)}
               className={`${cat.color} border rounded-2xl p-4 text-center transition-all hover:scale-105 hover:shadow-md`}
             >
-              <div className="text-3xl mb-2">{cat.emoji}</div>
+              <Emoji3d e={cat.emoji} size={42} className="mb-2 mx-auto" />
               <div className="text-xs font-bold text-gray-700 leading-tight">
                 {cats[cat.key]?.replace(/^.{2}/, "").trim()}
               </div>
@@ -331,7 +332,7 @@ export default function HomePage() {
       {/* Bottom promo banner */}
       <section className="max-w-7xl mx-auto px-4 pb-8">
         <div className="hero-gradient rounded-2xl p-8 md:p-12 text-center text-white">
-          <div className="text-5xl mb-4">🏫</div>
+          <Emoji3d e="🏫" size={56} className="mb-4 mx-auto" />
           <h2 className="text-2xl md:text-3xl font-black mb-3">
             {lang === "uz" ? "Maktabingizni qo'shing!" : "Добавьте свою школу!"}
           </h2>

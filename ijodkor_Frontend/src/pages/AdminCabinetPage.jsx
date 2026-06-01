@@ -18,6 +18,9 @@ import {
   Edit2,
   Check,
   Eye,
+  GraduationCap,
+  ArrowLeft,
+  ChevronRight,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import {
@@ -25,16 +28,12 @@ import {
   findCategory as findBookCategory,
   findSubcategory as findBookSubcategory,
 } from "../components/ui/data/bookCategories";
-
-const VIDEO_CATEGORIES = [
-  { key: "math", uz: "Matematika", ru: "Математика" },
-  { key: "physics", uz: "Fizika", ru: "Физика" },
-  { key: "chemistry", uz: "Kimyo", ru: "Химия" },
-  { key: "biology", uz: "Biologiya", ru: "Биология" },
-  { key: "english", uz: "Ingliz tili", ru: "Английский" },
-  { key: "informatics", uz: "Informatika", ru: "Информатика" },
-  { key: "other", uz: "Boshqa", ru: "Другие" },
-];
+import {
+  SCHOOL_SUBJECTS,
+  GRADE_COLORS,
+  findSubject as findSchoolSubject,
+} from "../components/ui/data/schoolSubjects";
+import { VIDEO_CATEGORIES } from "../components/ui/data/videoCategories";
 
 // IndexedDB helpers
 const openDB = (name) =>
@@ -485,6 +484,218 @@ export default function AdminCabinetPage() {
     }
   };
 
+  // ── MAKTAB DARSLIKLARI ─────────────────────────────────────────────────
+  const [schoolBooks, setSchoolBooks] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("school_books") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [schoolVideos, setSchoolVideos] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("school_videos") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const saveSchoolBooks = (next) => {
+    setSchoolBooks(next);
+    localStorage.setItem("school_books", JSON.stringify(next));
+  };
+  const saveSchoolVideos = (next) => {
+    setSchoolVideos(next);
+    localStorage.setItem("school_videos", JSON.stringify(next));
+  };
+
+  const [selectedGrade, setSelectedGrade] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+
+  // Maktab kitobi yuklash
+  const [showSchoolBookForm, setShowSchoolBookForm] = useState(false);
+  const [schoolBookForm, setSchoolBookForm] = useState({
+    pdfName: "",
+    pdfSize: 0,
+    pdfUrl: "",
+    _file: null,
+  });
+  const [schoolBookUploading, setSchoolBookUploading] = useState(false);
+
+  const findSchoolBook = (grade, subject) =>
+    schoolBooks.find((b) => b.grade === grade && b.subject === subject);
+
+  const handleSchoolBookFile = (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      alert(lang === "uz" ? "Faqat PDF" : "Только PDF");
+      return;
+    }
+    setSchoolBookForm((f) => ({
+      ...f,
+      pdfName: file.name,
+      pdfSize: file.size,
+      pdfUrl: "",
+      _file: file,
+    }));
+  };
+
+  const submitSchoolBook = async () => {
+    if (!schoolBookForm._file && !schoolBookForm.pdfUrl.trim()) {
+      alert(
+        lang === "uz" ? "PDF fayl yoki URL kiriting" : "Файл или URL нужен"
+      );
+      return;
+    }
+    setSchoolBookUploading(true);
+    try {
+      // Eski kitobni o'chirish (1 fan = 1 kitob)
+      const existing = findSchoolBook(selectedGrade, selectedSubject);
+      if (existing) {
+        try {
+          await deleteBlob("admin_book_db", "books", existing.id);
+        } catch {}
+      }
+      const id = Date.now();
+      let meta;
+      if (schoolBookForm._file) {
+        await saveBlob("admin_book_db", "books", id, schoolBookForm._file);
+        meta = {
+          id,
+          grade: selectedGrade,
+          subject: selectedSubject,
+          type: "file",
+          pdfName: schoolBookForm.pdfName,
+          pdfSize: schoolBookForm.pdfSize,
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        meta = {
+          id,
+          grade: selectedGrade,
+          subject: selectedSubject,
+          type: "url",
+          pdfUrl: schoolBookForm.pdfUrl.trim(),
+          pdfName: schoolBookForm.pdfUrl.split("/").pop() || "kitob.pdf",
+          createdAt: new Date().toISOString(),
+        };
+      }
+      const filtered = schoolBooks.filter(
+        (b) => !(b.grade === selectedGrade && b.subject === selectedSubject)
+      );
+      saveSchoolBooks([meta, ...filtered]);
+      setSchoolBookForm({
+        pdfName: "",
+        pdfSize: 0,
+        pdfUrl: "",
+        _file: null,
+      });
+      setShowSchoolBookForm(false);
+    } catch (e) {
+      alert(lang === "uz" ? "Xato" : "Ошибка");
+    } finally {
+      setSchoolBookUploading(false);
+    }
+  };
+
+  const deleteSchoolBook = async (book) => {
+    if (!confirm(lang === "uz" ? "Kitobni o'chirilsinmi?" : "Удалить книгу?"))
+      return;
+    if (book.type === "file") {
+      try {
+        await deleteBlob("admin_book_db", "books", book.id);
+      } catch {}
+    }
+    saveSchoolBooks(schoolBooks.filter((b) => b.id !== book.id));
+  };
+
+  const downloadSchoolBook = async (book) => {
+    if (book.type === "url") {
+      window.open(book.pdfUrl, "_blank");
+      return;
+    }
+    try {
+      const blob = await getBlob("admin_book_db", "books", book.id);
+      if (!blob) {
+        alert(lang === "uz" ? "Topilmadi" : "Не найден");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = book.pdfName || "kitob.pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      alert(lang === "uz" ? "Xato" : "Ошибка");
+    }
+  };
+
+  // Maktab video
+  const [showSchoolVideoForm, setShowSchoolVideoForm] = useState(false);
+  const [schoolVideoForm, setSchoolVideoForm] = useState({
+    title_uz: "",
+    title_ru: "",
+    videoUrl: "",
+    youtubeId: "",
+  });
+  const [editingSchoolVideoId, setEditingSchoolVideoId] = useState(null);
+
+  const handleSchoolVideoUrlChange = (value) => {
+    const id = extractYouTubeId(value);
+    setSchoolVideoForm((f) => ({ ...f, videoUrl: value, youtubeId: id || "" }));
+  };
+
+  const submitSchoolVideo = () => {
+    if (!schoolVideoForm.title_uz || !schoolVideoForm.youtubeId) {
+      alert(
+        lang === "uz"
+          ? "Nom va YouTube link kerak"
+          : "Нужно название и ссылка"
+      );
+      return;
+    }
+    const meta = {
+      id: editingSchoolVideoId || Date.now(),
+      grade: selectedGrade,
+      subject: selectedSubject,
+      title_uz: schoolVideoForm.title_uz,
+      title_ru: schoolVideoForm.title_ru,
+      youtubeId: schoolVideoForm.youtubeId,
+      thumbnail: `https://img.youtube.com/vi/${schoolVideoForm.youtubeId}/hqdefault.jpg`,
+      createdAt: new Date().toISOString(),
+    };
+    if (editingSchoolVideoId) {
+      saveSchoolVideos(
+        schoolVideos.map((v) => (v.id === editingSchoolVideoId ? meta : v))
+      );
+    } else {
+      saveSchoolVideos([meta, ...schoolVideos]);
+    }
+    setSchoolVideoForm({ title_uz: "", title_ru: "", videoUrl: "", youtubeId: "" });
+    setEditingSchoolVideoId(null);
+    setShowSchoolVideoForm(false);
+  };
+
+  const editSchoolVideo = (v) => {
+    setSchoolVideoForm({
+      title_uz: v.title_uz || "",
+      title_ru: v.title_ru || "",
+      videoUrl: `https://www.youtube.com/watch?v=${v.youtubeId}`,
+      youtubeId: v.youtubeId,
+    });
+    setEditingSchoolVideoId(v.id);
+    setShowSchoolVideoForm(true);
+  };
+
+  const deleteSchoolVideo = (id) => {
+    if (!confirm(lang === "uz" ? "O'chirilsinmi?" : "Удалить?")) return;
+    saveSchoolVideos(schoolVideos.filter((v) => v.id !== id));
+  };
+
+  const subjectVideos = (g, s) =>
+    schoolVideos.filter((v) => v.grade === g && v.subject === s);
+
   const handleLogout = () => {
     if (confirm(lang === "uz" ? "Chiqilsinmi?" : "Выйти?")) {
       adminLogout();
@@ -508,6 +719,11 @@ export default function AdminCabinetPage() {
       key: "videos",
       icon: <Video size={18} />,
       label: lang === "uz" ? "Video Darsliklar" : "Видеоуроки",
+    },
+    {
+      key: "school-books",
+      icon: <GraduationCap size={18} />,
+      label: lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники",
     },
   ];
 
@@ -955,6 +1171,350 @@ export default function AdminCabinetPage() {
             )}
           </div>
         )}
+
+        {/* ════════════════════════ MAKTAB DARSLIKLARI ════════════════════════ */}
+        {tab === "school-books" && (
+          <div>
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm mb-4 flex-wrap">
+              <button
+                onClick={() => {
+                  setSelectedGrade(null);
+                  setSelectedSubject(null);
+                }}
+                className={`font-bold ${
+                  !selectedGrade
+                    ? "text-emerald-600"
+                    : "text-gray-500 hover:text-emerald-600"
+                }`}
+              >
+                {lang === "uz" ? "Sinflar" : "Классы"}
+              </button>
+              {selectedGrade && (
+                <>
+                  <ChevronRight size={14} className="text-gray-300" />
+                  <button
+                    onClick={() => setSelectedSubject(null)}
+                    className={`font-bold ${
+                      !selectedSubject
+                        ? "text-emerald-600"
+                        : "text-gray-500 hover:text-emerald-600"
+                    }`}
+                  >
+                    {lang === "uz"
+                      ? `${selectedGrade}-sinf`
+                      : `${selectedGrade} класс`}
+                  </button>
+                </>
+              )}
+              {selectedSubject && (
+                <>
+                  <ChevronRight size={14} className="text-gray-300" />
+                  <span className="font-bold text-emerald-600">
+                    {lang === "uz"
+                      ? findSchoolSubject(selectedGrade, selectedSubject)?.uz
+                      : findSchoolSubject(selectedGrade, selectedSubject)?.ru}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* LEVEL 1: Sinflar */}
+            {!selectedGrade && (
+              <div>
+                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-6">
+                  <GraduationCap className="text-emerald-600" size={26} />
+                  {lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники"}
+                </h1>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {Object.keys(SCHOOL_SUBJECTS).map((g) => {
+                    const grade = parseInt(g);
+                    const c = GRADE_COLORS[grade];
+                    const subjectCount = SCHOOL_SUBJECTS[grade].length;
+                    const bookCount = schoolBooks.filter(
+                      (b) => b.grade === grade
+                    ).length;
+                    const videoCount = schoolVideos.filter(
+                      (v) => v.grade === grade
+                    ).length;
+                    return (
+                      <button
+                        key={grade}
+                        onClick={() => setSelectedGrade(grade)}
+                        className={`bg-gradient-to-br ${c.bg} ${c.text} rounded-2xl p-5 text-left hover:scale-[1.04] active:scale-[0.98] transition shadow-sm hover:shadow-lg border border-white/40`}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-xl ${c.solid} text-white flex items-center justify-center mb-3 font-black text-lg shadow-md`}
+                        >
+                          {grade}
+                        </div>
+                        <h3 className="font-black text-base mb-1">
+                          {lang === "uz" ? `${grade}-sinf` : `${grade} класс`}
+                        </h3>
+                        <div className="flex flex-col gap-0.5 text-[11px] opacity-80">
+                          <span>
+                            📚 {subjectCount}{" "}
+                            {lang === "uz" ? "fan" : "предм."}
+                          </span>
+                          <span>
+                            📕 {bookCount} • 🎬 {videoCount}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* LEVEL 2: Fanlar */}
+            {selectedGrade && !selectedSubject && (
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <button
+                    onClick={() => setSelectedGrade(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-xl font-black text-gray-900">
+                    {lang === "uz"
+                      ? `${selectedGrade}-sinf fanlari`
+                      : `Предметы ${selectedGrade} класса`}
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(SCHOOL_SUBJECTS[selectedGrade] || []).map((s) => {
+                    const c = GRADE_COLORS[selectedGrade];
+                    const hasBook = !!findSchoolBook(selectedGrade, s.key);
+                    const videoCount = subjectVideos(selectedGrade, s.key)
+                      .length;
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => setSelectedSubject(s.key)}
+                        className={`bg-white border-2 ${
+                          c.text.replace("text", "border")
+                        }/30 hover:shadow-md rounded-2xl p-4 text-left transition flex items-start gap-3`}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.bg} flex items-center justify-center flex-shrink-0`}
+                        >
+                          <FileText className={c.text} size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black text-sm text-gray-800 mb-1 line-clamp-2">
+                            {lang === "uz" ? s.uz : s.ru}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            {hasBook && (
+                              <span className="bg-blue-50 text-[#1a56db] font-bold px-2 py-0.5 rounded">
+                                📕 PDF
+                              </span>
+                            )}
+                            <span className="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded">
+                              🎬 {videoCount}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight
+                          size={16}
+                          className="text-gray-300 flex-shrink-0 mt-3"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* LEVEL 3: Fan tafsiloti */}
+            {selectedGrade && selectedSubject && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedSubject(null)}
+                    className="p-2 rounded-xl hover:bg-gray-100"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900">
+                      {lang === "uz"
+                        ? findSchoolSubject(selectedGrade, selectedSubject)?.uz
+                        : findSchoolSubject(selectedGrade, selectedSubject)?.ru}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {lang === "uz"
+                        ? `${selectedGrade}-sinf`
+                        : `${selectedGrade} класс`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* PDF kitob */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-black text-base flex items-center gap-2">
+                      <BookOpen size={18} className="text-[#1a56db]" />
+                      {lang === "uz" ? "PDF Kitob" : "PDF Книга"}
+                    </h3>
+                    {!findSchoolBook(selectedGrade, selectedSubject) && (
+                      <button
+                        onClick={() => setShowSchoolBookForm(true)}
+                        className="flex items-center gap-1.5 bg-[#1a56db] hover:bg-[#1341a8] text-white px-3 py-1.5 rounded-lg font-bold text-xs"
+                      >
+                        <Plus size={14} />
+                        {lang === "uz" ? "Yuklash" : "Загрузить"}
+                      </button>
+                    )}
+                  </div>
+                  {(() => {
+                    const b = findSchoolBook(selectedGrade, selectedSubject);
+                    if (!b) {
+                      return (
+                        <p className="text-sm text-gray-400 text-center py-6">
+                          {lang === "uz"
+                            ? "Hozircha kitob yo'q"
+                            : "Книги пока нет"}
+                        </p>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
+                        <FileText className="text-[#1a56db]" size={28} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm truncate">
+                            {b.pdfName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {b.type === "url"
+                              ? "🔗 URL"
+                              : formatFileSize(b.pdfSize)}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => downloadSchoolBook(b)}
+                          className="bg-white text-[#1a56db] p-2 rounded-lg hover:bg-blue-100"
+                          title="Yuklab olish"
+                        >
+                          <Download size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSchoolBookForm({
+                              pdfName: "",
+                              pdfSize: 0,
+                              pdfUrl: "",
+                              _file: null,
+                            });
+                            setShowSchoolBookForm(true);
+                          }}
+                          className="bg-white text-amber-600 p-2 rounded-lg hover:bg-amber-50"
+                          title="Almashtirish"
+                        >
+                          <Upload size={16} />
+                        </button>
+                        <button
+                          onClick={() => deleteSchoolBook(b)}
+                          className="bg-white text-red-600 p-2 rounded-lg hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Videolar */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-black text-base flex items-center gap-2">
+                      <Video size={18} className="text-rose-600" />
+                      {lang === "uz" ? "Video Darsliklar" : "Видеоуроки"}{" "}
+                      <span className="text-xs text-gray-400 font-medium">
+                        (
+                        {subjectVideos(selectedGrade, selectedSubject).length})
+                      </span>
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setSchoolVideoForm({
+                          title_uz: "",
+                          title_ru: "",
+                          videoUrl: "",
+                          youtubeId: "",
+                        });
+                        setEditingSchoolVideoId(null);
+                        setShowSchoolVideoForm(true);
+                      }}
+                      className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs"
+                    >
+                      <Plus size={14} />
+                      {lang === "uz" ? "Video qo'shish" : "Добавить видео"}
+                    </button>
+                  </div>
+                  {subjectVideos(selectedGrade, selectedSubject).length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">
+                      {lang === "uz" ? "Hozircha video yo'q" : "Видео нет"}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {subjectVideos(selectedGrade, selectedSubject).map(
+                        (v) => (
+                          <div
+                            key={v.id}
+                            className="bg-gray-50 rounded-xl overflow-hidden hover:shadow-md transition"
+                          >
+                            <button
+                              onClick={() => setPlayingVideo({ ...v, type: "youtube" })}
+                              className="w-full aspect-video bg-black relative group"
+                            >
+                              <img
+                                src={v.thumbnail}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition flex items-center justify-center">
+                                <Play
+                                  size={32}
+                                  className="text-white"
+                                  fill="currentColor"
+                                />
+                              </div>
+                            </button>
+                            <div className="p-3">
+                              <h4 className="font-bold text-sm line-clamp-2 mb-2">
+                                {lang === "uz"
+                                  ? v.title_uz
+                                  : v.title_ru || v.title_uz}
+                              </h4>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => editSchoolVideo(v)}
+                                  className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 py-1.5 rounded-lg text-xs font-bold"
+                                >
+                                  <Edit2 size={12} className="inline mr-1" />
+                                  {lang === "uz" ? "Tahrirlash" : "Изменить"}
+                                </button>
+                                <button
+                                  onClick={() => deleteSchoolVideo(v.id)}
+                                  className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* ── KITOB FORMA ── */}
@@ -1332,6 +1892,206 @@ export default function AdminCabinetPage() {
                     : lang === "uz"
                     ? "Saqlash"
                     : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAKTAB PDF FORMA ── */}
+      {showSchoolBookForm && (
+        <div
+          onClick={() => !schoolBookUploading && setShowSchoolBookForm(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="font-black text-lg">
+                {lang === "uz" ? "PDF kitob yuklash" : "Загрузить PDF"}
+              </h2>
+              <button
+                onClick={() => !schoolBookUploading && setShowSchoolBookForm(false)}
+                className="text-gray-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <label className="block cursor-pointer">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => handleSchoolBookFile(e.target.files?.[0])}
+                  className="hidden"
+                />
+                <div className="border-2 border-dashed border-gray-200 hover:border-[#1a56db] rounded-xl p-5 text-center">
+                  {schoolBookForm.pdfName ? (
+                    <div>
+                      <FileText
+                        className="mx-auto text-[#1a56db] mb-2"
+                        size={28}
+                      />
+                      <div className="text-sm font-bold truncate">
+                        {schoolBookForm.pdfName}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatFileSize(schoolBookForm.pdfSize)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <Upload className="mx-auto text-gray-400 mb-2" size={26} />
+                      <div className="text-sm text-gray-600">
+                        {lang === "uz" ? "PDF tanlash" : "Выбрать PDF"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              <div className="text-center text-xs text-gray-400">
+                — {lang === "uz" ? "yoki" : "или"} —
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  PDF URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/kitob.pdf"
+                  value={schoolBookForm.pdfUrl}
+                  onChange={(e) =>
+                    setSchoolBookForm({
+                      ...schoolBookForm,
+                      pdfUrl: e.target.value,
+                      pdfName: "",
+                      _file: null,
+                    })
+                  }
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1a56db]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowSchoolBookForm(false)}
+                  disabled={schoolBookUploading}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm"
+                >
+                  {lang === "uz" ? "Bekor" : "Отмена"}
+                </button>
+                <button
+                  onClick={submitSchoolBook}
+                  disabled={schoolBookUploading}
+                  className="flex-1 bg-[#1a56db] hover:bg-[#1341a8] text-white py-2.5 rounded-xl font-bold text-sm disabled:opacity-50"
+                >
+                  {schoolBookUploading
+                    ? lang === "uz"
+                      ? "Saqlanmoqda..."
+                      : "Сохранение..."
+                    : lang === "uz"
+                    ? "Saqlash"
+                    : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAKTAB VIDEO FORMA ── */}
+      {showSchoolVideoForm && (
+        <div
+          onClick={() => setShowSchoolVideoForm(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="font-black text-lg">
+                {editingSchoolVideoId
+                  ? lang === "uz"
+                    ? "Videoni tahrirlash"
+                    : "Изменить видео"
+                  : lang === "uz"
+                  ? "Yangi video"
+                  : "Новое видео"}
+              </h2>
+              <button
+                onClick={() => setShowSchoolVideoForm(false)}
+                className="text-gray-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <input
+                type="text"
+                placeholder={
+                  lang === "uz" ? "Mavzu (UZ) — masalan: 11-mavzu *" : "Тема (UZ) *"
+                }
+                value={schoolVideoForm.title_uz}
+                onChange={(e) =>
+                  setSchoolVideoForm({
+                    ...schoolVideoForm,
+                    title_uz: e.target.value,
+                  })
+                }
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+              />
+              <input
+                type="text"
+                placeholder={lang === "uz" ? "Mavzu (RU)" : "Тема (RU)"}
+                value={schoolVideoForm.title_ru}
+                onChange={(e) =>
+                  setSchoolVideoForm({
+                    ...schoolVideoForm,
+                    title_ru: e.target.value,
+                  })
+                }
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600"
+              />
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  YouTube link / embed / ID *
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={schoolVideoForm.videoUrl}
+                  onChange={(e) => handleSchoolVideoUrlChange(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-600 font-mono resize-none"
+                />
+                {schoolVideoForm.youtubeId && (
+                  <div className="mt-2 aspect-video bg-black rounded-lg overflow-hidden">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${schoolVideoForm.youtubeId}`}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowSchoolVideoForm(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm"
+                >
+                  {lang === "uz" ? "Bekor" : "Отмена"}
+                </button>
+                <button
+                  onClick={submitSchoolVideo}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl font-bold text-sm"
+                >
+                  {lang === "uz" ? "Saqlash" : "Сохранить"}
                 </button>
               </div>
             </div>

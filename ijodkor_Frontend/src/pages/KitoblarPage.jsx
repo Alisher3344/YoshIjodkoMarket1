@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   SlidersHorizontal,
   X,
+  Eye,
 } from "lucide-react";
 import useStore from "../store/useStore";
 import {
@@ -16,6 +17,8 @@ import {
   findCategory as findBookCategory,
   findSubcategory as findBookSubcategory,
 } from "../components/ui/data/bookCategories";
+import BookPdfViewer from "../components/ui/BookPdfViewer";
+import Emoji3d from "../components/ui/Emoji3d";
 
 export default function KitoblarPage() {
   const { lang } = useStore();
@@ -25,6 +28,8 @@ export default function KitoblarPage() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const [books, setBooks] = useState([]);
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const [previewBook, setPreviewBook] = useState(null);
 
   useEffect(() => {
     try {
@@ -34,6 +39,49 @@ export default function KitoblarPage() {
       setBooks([]);
     }
   }, []);
+
+  const openBookOnline = async (b) => {
+    setPreviewBook(b);
+    // Eski format (base64 dataURL) — to'g'ridan-to'g'ri
+    if (b.pdfData) {
+      setPdfPreview({ url: b.pdfData, name: b.pdfName });
+      return;
+    }
+    // IndexedDB'dan o'qish
+    try {
+      const req = indexedDB.open("admin_book_db", 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore("books");
+      };
+      req.onsuccess = () => {
+        const tx = req.result.transaction("books", "readonly");
+        const getReq = tx.objectStore("books").get(b.id);
+        getReq.onsuccess = () => {
+          const blob = getReq.result;
+          if (!blob) {
+            alert(lang === "uz" ? "PDF topilmadi" : "PDF не найден");
+            setPreviewBook(null);
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          setPdfPreview({ url, name: b.pdfName, _blob: true });
+        };
+        getReq.onerror = () => {
+          alert(lang === "uz" ? "Xato" : "Ошибка");
+          setPreviewBook(null);
+        };
+      };
+    } catch {
+      alert(lang === "uz" ? "Xato" : "Ошибка");
+      setPreviewBook(null);
+    }
+  };
+
+  const closePdfPreview = () => {
+    if (pdfPreview?._blob) URL.revokeObjectURL(pdfPreview.url);
+    setPdfPreview(null);
+    setPreviewBook(null);
+  };
 
   const downloadBook = async (b) => {
     try {
@@ -344,9 +392,7 @@ export default function KitoblarPage() {
                               loading="lazy"
                             />
                           ) : (
-                            <span className="text-4xl sm:text-5xl">
-                              {cat?.icon || "📕"}
-                            </span>
+                            <Emoji3d e={cat?.icon || "📕"} size={56} />
                           )}
                         </div>
                       )}
@@ -364,14 +410,30 @@ export default function KitoblarPage() {
                         {lang === "uz" ? sub.uz : sub.ru}
                       </span>
                     )}
-                    <button
-                      onClick={() => downloadBook(b)}
-                      className="w-full flex items-center justify-center gap-1 sm:gap-1.5 bg-amber-500 hover:bg-amber-600 text-white py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition"
-                    >
-                      <Download size={11} className="sm:w-[13px] sm:h-[13px]" />
-                      <span className="hidden sm:inline">PDF </span>
-                      {lang === "uz" ? "yuklab olish" : "скачать"}
-                    </button>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => openBookOnline(b)}
+                        className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 bg-amber-500 hover:bg-amber-600 text-white py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition"
+                      >
+                        <Eye size={11} className="sm:w-[13px] sm:h-[13px]" />
+                        <span className="hidden sm:inline">
+                          {lang === "uz" ? "Onlayn" : "Онлайн"}
+                        </span>
+                        <span className="sm:hidden">
+                          {lang === "uz" ? "Ochish" : "Открыть"}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => downloadBook(b)}
+                        className="flex items-center justify-center bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition"
+                        title={lang === "uz" ? "Yuklab olish" : "Скачать"}
+                      >
+                        <Download
+                          size={11}
+                          className="sm:w-[13px] sm:h-[13px]"
+                        />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -379,6 +441,17 @@ export default function KitoblarPage() {
           )}
         </main>
       </div>
+
+      {/* Book-style PDF Viewer */}
+      {pdfPreview && (
+        <BookPdfViewer
+          url={pdfPreview.url}
+          name={pdfPreview.name}
+          lang={lang}
+          onClose={closePdfPreview}
+          onDownload={previewBook ? () => downloadBook(previewBook) : undefined}
+        />
+      )}
     </div>
   );
 }

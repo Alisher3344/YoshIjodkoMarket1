@@ -1,6 +1,7 @@
 import { MapPin, Phone, Mail, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../store/useStore";
+import Emoji3d from "../ui/Emoji3d";
 
 export default function Footer() {
   const { t, lang } = useStore();
@@ -31,9 +32,9 @@ export default function Footer() {
                 <a
                   key={i}
                   href="#"
-                  className="w-9 h-9 bg-gray-800 hover:bg-[#1a56db] rounded-lg flex items-center justify-center text-base transition"
+                  className="w-9 h-9 bg-gray-800 hover:bg-[#1a56db] rounded-lg flex items-center justify-center transition"
                 >
-                  {icon}
+                  <Emoji3d e={icon} size={20} />
                 </a>
               ))}
             </div>

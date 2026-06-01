@@ -126,7 +126,6 @@ export default function Header() {
   const subNavLinks = [
     {
       label: lang === "uz" ? "Ijodlar" : "Творчество",
-      shortLabel: lang === "uz" ? "Ijod" : "Творч.",
       key: "ijodlar",
       path: "/ijodlar/catalog",
       icon: Palette,
@@ -134,21 +133,18 @@ export default function Header() {
     },
     {
       label: lang === "uz" ? "Kitoblar" : "Книги",
-      shortLabel: lang === "uz" ? "Kitob" : "Книги",
       key: "kitoblar",
       path: "/kitoblar/catalog",
       icon: BookOpen,
     },
     {
       label: lang === "uz" ? "Video Darsliklar" : "Видеоуроки",
-      shortLabel: lang === "uz" ? "Video" : "Видео",
       key: "videos",
       path: "/video-darsliklar/catalog",
       icon: Video,
     },
     {
       label: lang === "uz" ? "Maktab Darsliklari" : "Школьные учебники",
-      shortLabel: lang === "uz" ? "Maktab" : "Школа",
       key: "school-books",
       path: "/maktab-darsliklari/catalog",
       icon: GraduationCap,
@@ -373,8 +369,8 @@ export default function Header() {
 
         {/* ══════════════════════ SECTIONS NAV ══════════════════════ */}
         <div className="bg-white border-t border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-2 sm:px-4">
-            <nav className="flex items-stretch justify-between sm:justify-center sm:gap-6 md:gap-10 lg:gap-14 overflow-x-auto scrollbar-hide">
+          <div className="max-w-7xl mx-auto">
+            <nav className="flex items-stretch sm:justify-center gap-1 sm:gap-6 md:gap-10 lg:gap-14 overflow-x-auto scrollbar-hide px-2 sm:px-4">
               {subNavLinks.map((link) => {
                 const Icon = link.icon;
                 const onAnySection = subNavLinks.some(
@@ -387,27 +383,26 @@ export default function Header() {
                   <button
                     key={link.key}
                     onClick={() => handleSubNavClick(link)}
-                    className={`relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 flex-1 sm:flex-initial min-w-0 py-2 sm:py-3 md:py-3.5 px-1 sm:px-0 whitespace-nowrap transition-colors ${
+                    className={`relative flex items-center justify-center gap-1.5 sm:gap-2 flex-shrink-0 py-2.5 sm:py-3 md:py-3.5 px-2.5 sm:px-1 whitespace-nowrap transition-colors ${
                       active
                         ? "text-[#1a56db]"
                         : "text-gray-600 hover:text-[#1a56db]"
                     }`}
                   >
                     <Icon
-                      size={18}
-                      className="sm:w-4 sm:h-4"
+                      size={15}
+                      className="sm:w-4 sm:h-4 flex-shrink-0"
                       strokeWidth={active ? 2.2 : 1.8}
                     />
                     <span
-                      className={`text-[10px] sm:text-sm md:text-[15px] tracking-tight ${
-                        active ? "font-bold sm:font-semibold" : "font-medium"
+                      className={`text-[11px] sm:text-sm md:text-[15px] tracking-tight ${
+                        active ? "font-semibold" : "font-medium"
                       }`}
                     >
-                      <span className="sm:hidden">{link.shortLabel}</span>
-                      <span className="hidden sm:inline">{link.label}</span>
+                      {link.label}
                     </span>
                     <span
-                      className={`absolute left-1 right-1 sm:left-0 sm:right-0 -bottom-[1px] h-[2px] rounded-full transition-all ${
+                      className={`absolute left-2 right-2 sm:left-0 sm:right-0 -bottom-[1px] h-[2px] rounded-full transition-all ${
                         active
                           ? "bg-[#1a56db] opacity-100 scale-x-100"
                           : "bg-[#1a56db] opacity-0 scale-x-50"

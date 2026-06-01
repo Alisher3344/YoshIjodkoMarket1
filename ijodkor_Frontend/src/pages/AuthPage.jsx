@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { User, Lock, ArrowLeft, AlertCircle, Phone } from "lucide-react";
 import useStore from "../store/useStore";
 import { formatPhone, isValidPhone } from "../utils/phone";
+import Emoji3d from "../components/ui/Emoji3d";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ export default function AuthPage() {
 
         <div className="px-8 pb-8">
           <div className="text-center mb-6">
-            <div className="text-5xl mb-2">🎨</div>
+            <Emoji3d e="🎨" size={56} className="mb-2 mx-auto" />
             <h1 className="text-2xl font-black text-gray-900">
               {tab === "login"
                 ? lang === "uz"

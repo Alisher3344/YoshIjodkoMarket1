@@ -294,3 +294,54 @@ export const categoryLabels = {
     custom: "⚡ На заказ",
   }
 };
+
+// Kategoriya uchun emoji ikonalar (3D rasm sifatida ishlatish uchun)
+export const categoryIcons = {
+  all: "",
+  paintings: "🎨",
+  handcraft: "✂️",
+  clothing: "👗",
+  toys: "🧸",
+  souvenirs: "🎁",
+  holiday: "🎉",
+  educational: "📚",
+  digital: "💻",
+  creative: "⭐",
+  school: "🏫",
+  eco: "🌿",
+  custom: "⚡",
+};
+
+// Emoji-siz toza label
+export const categoryNameOnly = {
+  uz: {
+    all: "Barcha",
+    paintings: "Rassomchilik ishlari",
+    handcraft: "Qo'l mehnati (Handmade)",
+    clothing: "Tikilgan va kiyimlar",
+    toys: "O'yinchoqlar va bolalar buyumlari",
+    souvenirs: "Suvenir va sovg'alar",
+    holiday: "Bayram va dekor",
+    educational: "Ta'limiy va foydali mahsulotlar",
+    digital: "Raqamli mahsulotlar",
+    creative: "Ijodiy xizmatlar",
+    school: "Maktab loyihalari",
+    eco: "Eko va tabiiy mahsulotlar",
+    custom: "Buyurtma berish",
+  },
+  ru: {
+    all: "Все",
+    paintings: "Художественные работы",
+    handcraft: "Ручная работа (Handmade)",
+    clothing: "Шитьё и одежда",
+    toys: "Игрушки и детские товары",
+    souvenirs: "Сувениры и подарки",
+    holiday: "Праздник и декор",
+    educational: "Учебные и полезные товары",
+    digital: "Цифровые продукты",
+    creative: "Творческие услуги",
+    school: "Школьные проекты",
+    eco: "Эко и натуральные продукты",
+    custom: "На заказ",
+  },
+};

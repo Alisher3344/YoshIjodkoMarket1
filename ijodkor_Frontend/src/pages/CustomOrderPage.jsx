@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import useStore from "../store/useStore";
 import { formatPhone } from "../utils/phone";
+import Emoji3d from "../components/ui/Emoji3d";
 
 const TYPES_UZ = [
   { key: "painting", icon: "🎨", label: "Rasm / Portret" },
@@ -209,7 +210,7 @@ export default function CustomOrderPage() {
                         : "border-gray-200 hover:border-gray-300 text-gray-600"
                     }`}
                   >
-                    <span className="text-2xl">{tp.icon}</span>
+                    <Emoji3d e={tp.icon} size={28} />
                     {tp.label}
                   </button>
                 ))}

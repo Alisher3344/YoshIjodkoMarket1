@@ -6,6 +6,7 @@ import {
   findCategory as findBookCategory,
   findSubcategory as findBookSubcategory,
 } from "../components/ui/data/bookCategories";
+import { VIDEO_CATEGORIES as VIDEO_CATS_SHARED } from "../components/ui/data/videoCategories";
 import {
   LayoutDashboard,
   Package,
@@ -41,6 +42,7 @@ import {
 import useStore from "../store/useStore";
 import { api } from "../services/api";
 import { formatPhone } from "../utils/phone";
+import Emoji3d from "../components/ui/Emoji3d";
 
 const COUNTRIES = ["O'zbekiston"];
 
@@ -357,15 +359,7 @@ export default function AdminPage() {
   };
 
   // ── Video Darsliklar — localStorage + IndexedDB (katta fayllar uchun) ──
-  const VIDEO_CATEGORIES = [
-    { key: "math", uz: "Matematika", ru: "Математика" },
-    { key: "physics", uz: "Fizika", ru: "Физика" },
-    { key: "chemistry", uz: "Kimyo", ru: "Химия" },
-    { key: "biology", uz: "Biologiya", ru: "Биология" },
-    { key: "english", uz: "Ingliz tili", ru: "Английский" },
-    { key: "informatics", uz: "Informatika", ru: "Информатика" },
-    { key: "other", uz: "Boshqa", ru: "Другие" },
-  ];
+  const VIDEO_CATEGORIES = VIDEO_CATS_SHARED;
 
   const [videos, setVideos] = useState(() => {
     try {
@@ -820,7 +814,7 @@ export default function AdminPage() {
       <div className="admin-shell min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-sm border border-gray-100">
           <div className="text-center mb-8">
-            <div className="text-5xl mb-3">🔐</div>
+            <Emoji3d e="🔐" size={56} className="mb-3 mx-auto" />
             <h1 className="text-2xl font-black text-gray-900">
               {t("adminLogin")}
             </h1>
@@ -957,7 +951,9 @@ export default function AdminPage() {
       {/* Sidebar */}
       <aside className="w-56 bg-white shadow-sm border-r border-gray-100 flex flex-col fixed h-full z-10">
         <div className="p-5 border-b">
-          <div className="font-black text-lg text-[#1a56db]">🎨 Admin</div>
+          <div className="font-black text-lg text-[#1a56db] flex items-center gap-2">
+            <Emoji3d e="🎨" size={22} /> Admin
+          </div>
           <div className="text-xs text-gray-400 mt-0.5">Yoshijodkor.uz</div>
         </div>
 
@@ -1131,7 +1127,7 @@ export default function AdminPage() {
               </div>
             ) : products.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <div className="text-5xl mb-4">📦</div>
+                <Emoji3d e="📦" size={56} className="mb-4 mx-auto" />
                 <p>{lang === "uz" ? "Mahsulotlar yo'q" : "Нет товаров"}</p>
               </div>
             ) : (
@@ -1228,7 +1224,7 @@ export default function AdminPage() {
             </h1>
             {orders.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <div className="text-5xl mb-4">🛒</div>
+                <Emoji3d e="🛒" size={56} className="mb-4 mx-auto" />
                 <p>{lang === "uz" ? "Buyurtmalar yo'q" : "Нет заказов"}</p>
               </div>
             ) : (
@@ -1315,7 +1311,7 @@ export default function AdminPage() {
             </h1>
             {customOrders.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <div className="text-5xl mb-4">🎨</div>
+                <Emoji3d e="🎨" size={56} className="mb-4 mx-auto" />
                 <p>
                   {lang === "uz"
                     ? "Maxsus buyurtmalar yo'q"
@@ -1399,7 +1395,7 @@ export default function AdminPage() {
                 if (adminList.length === 0) {
                   return (
                     <div className="text-center py-20 text-gray-400">
-                      <div className="text-5xl mb-4">👤</div>
+                      <Emoji3d e="👤" size={56} className="mb-4 mx-auto" />
                       <p>
                         {lang === "uz"
                           ? "Adminlar yo'q"
@@ -1705,7 +1701,7 @@ export default function AdminPage() {
               if (groups.length === 0) {
                 return (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 text-center py-20 text-gray-400">
-                    <div className="text-5xl mb-4">🎓</div>
+                    <Emoji3d e="🎓" size={56} className="mb-4 mx-auto" />
                     <p className="font-semibold">
                       {q
                         ? lang === "uz"
@@ -1936,7 +1932,7 @@ export default function AdminPage() {
                 if (customers.length === 0) {
                   return (
                     <div className="text-center py-20 text-gray-400">
-                      <div className="text-5xl mb-4">👤</div>
+                      <Emoji3d e="👤" size={56} className="mb-4 mx-auto" />
                       <p>
                         {q
                           ? lang === "uz"
@@ -2544,7 +2540,7 @@ export default function AdminPage() {
               if (list.length === 0) {
                 return (
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm text-center py-20 text-gray-400">
-                    <div className="text-5xl mb-4">🏫</div>
+                    <Emoji3d e="🏫" size={56} className="mb-4 mx-auto" />
                     <p>
                       {q
                         ? lang === "uz"

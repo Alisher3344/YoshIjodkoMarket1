@@ -1,22 +1,24 @@
 import { useState, useEffect } from "react";
-import { Video, Play, Search, Clock, X } from "lucide-react";
+import {
+  Video,
+  Play,
+  Search,
+  Clock,
+  X,
+  ArrowLeft,
+  ChevronRight,
+} from "lucide-react";
 import useStore from "../store/useStore";
-
-const VIDEO_CATEGORIES = [
-  { key: "all", uz: "Barchasi", ru: "Все" },
-  { key: "math", uz: "Matematika", ru: "Математика" },
-  { key: "physics", uz: "Fizika", ru: "Физика" },
-  { key: "chemistry", uz: "Kimyo", ru: "Химия" },
-  { key: "biology", uz: "Biologiya", ru: "Биология" },
-  { key: "english", uz: "Ingliz tili", ru: "Английский" },
-  { key: "informatics", uz: "Informatika", ru: "Информатика" },
-  { key: "other", uz: "Boshqa", ru: "Другие" },
-];
+import {
+  VIDEO_CATEGORIES,
+  findVideoCategory as findCategory,
+} from "../components/ui/data/videoCategories";
+import YouTubePlayer from "../components/ui/YouTubePlayer";
 
 export default function VideoDarsliklarPage() {
   const { lang } = useStore();
   const [search, setSearch] = useState("");
-  const [subject, setSubject] = useState("all");
+  const [selectedSubject, setSelectedSubject] = useState(null);
   const [videos, setVideos] = useState([]);
   const [playing, setPlaying] = useState(null);
 
@@ -29,25 +31,28 @@ export default function VideoDarsliklarPage() {
     }
   }, []);
 
-  const filtered = videos.filter((v) => {
-    if (subject !== "all" && v.category !== subject) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (
-        (v.title_uz || "").toLowerCase().includes(q) ||
-        (v.title_ru || "").toLowerCase().includes(q) ||
-        (v.teacher || "").toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  // Tanlangan fan videolari
+  const subjectVideos = (key) =>
+    videos.filter((v) => v.category === key);
+
+  // Filterlangan natijalar (qidiruv bilan)
+  const filtered = selectedSubject
+    ? subjectVideos(selectedSubject).filter((v) => {
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+          (v.title_uz || "").toLowerCase().includes(q) ||
+          (v.title_ru || "").toLowerCase().includes(q) ||
+          (v.teacher || "").toLowerCase().includes(q)
+        );
+      })
+    : [];
 
   const openVideo = async (v) => {
     if (v.type === "youtube") {
       setPlaying(v);
       return;
     }
-    // Fayl uchun IndexedDB'dan o'qish
     try {
       const req = indexedDB.open("admin_video_db", 1);
       req.onsuccess = () => {
@@ -72,6 +77,8 @@ export default function VideoDarsliklarPage() {
     setPlaying(null);
   };
 
+  const totalVideos = videos.length;
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
       {/* Hero */}
@@ -85,82 +92,109 @@ export default function VideoDarsliklarPage() {
               {lang === "uz" ? "Video Darsliklar" : "Видеоуроки"}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500">
-              {lang === "uz"
-                ? `${videos.length} ta video dars`
-                : `${videos.length} видеоуроков`}
+              {selectedSubject
+                ? lang === "uz"
+                  ? findCategory(selectedSubject)?.uz
+                  : findCategory(selectedSubject)?.ru
+                : lang === "uz"
+                ? `${totalVideos} ta video, ${VIDEO_CATEGORIES.length} ta fan`
+                : `${totalVideos} видео, ${VIDEO_CATEGORIES.length} предметов`}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Mobile fanlar — horizontal scroll */}
-      <div className="lg:hidden mb-4 -mx-3 sm:-mx-4 px-3 sm:px-4 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2 pb-1">
-          {VIDEO_CATEGORIES.map((s) => {
-            const count =
-              s.key === "all"
-                ? videos.length
-                : videos.filter((v) => v.category === s.key).length;
-            return (
-              <button
-                key={s.key}
-                onClick={() => setSubject(s.key)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition ${
-                  subject === s.key
-                    ? "bg-rose-600 text-white"
-                    : "bg-white text-gray-600 border border-gray-200"
-                }`}
-              >
-                {lang === "uz" ? s.uz : s.ru} ({count})
-              </button>
-            );
-          })}
+      {/* Breadcrumb */}
+      {selectedSubject && (
+        <div className="flex items-center gap-2 text-sm mb-4 flex-wrap">
+          <button
+            onClick={() => {
+              setSelectedSubject(null);
+              setSearch("");
+            }}
+            className="font-bold text-gray-500 hover:text-rose-600 flex items-center gap-1"
+          >
+            <ArrowLeft size={14} />
+            {lang === "uz" ? "Fanlar" : "Предметы"}
+          </button>
+          <ChevronRight size={14} className="text-gray-300" />
+          <span className="font-bold text-rose-600">
+            {lang === "uz"
+              ? findCategory(selectedSubject)?.uz
+              : findCategory(selectedSubject)?.ru}
+          </span>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-6">
-        <aside className="hidden lg:block space-y-4">
-          <div className="bg-white rounded-2xl p-4 border border-gray-100">
-            <h3 className="font-black text-sm text-gray-800 mb-3">
-              {lang === "uz" ? "Fanlar" : "Предметы"}
-            </h3>
-            <div className="space-y-1">
-              {VIDEO_CATEGORIES.map((s) => {
-                const count =
-                  s.key === "all"
-                    ? videos.length
-                    : videos.filter((v) => v.category === s.key).length;
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() => setSubject(s.key)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex items-center justify-between ${
-                      subject === s.key
-                        ? "bg-rose-50 text-rose-700 font-bold"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span>{lang === "uz" ? s.uz : s.ru}</span>
-                    <span className="text-xs text-gray-400">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
+      {/* LEVEL 1: Fanlar grid */}
+      {!selectedSubject && (
+        <div>
+          <h2 className="font-black text-base sm:text-lg text-gray-800 mb-3 sm:mb-4">
+            {lang === "uz" ? "Fanni tanlang" : "Выберите предмет"}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+            {VIDEO_CATEGORIES.map((cat) => {
+              const c = cat.color;
+              const count = subjectVideos(cat.key).length;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => setSelectedSubject(cat.key)}
+                  className={`bg-gradient-to-br ${c.bg} ${c.text} rounded-2xl p-4 sm:p-5 text-left hover:scale-[1.04] active:scale-[0.98] transition shadow-sm hover:shadow-lg border border-white/40 group`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="text-3xl sm:text-4xl">{cat.icon}</div>
+                    <span
+                      className={`${c.solid} text-white text-[10px] font-black px-2 py-0.5 rounded-full`}
+                    >
+                      {count}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-sm sm:text-base mb-0.5">
+                    {lang === "uz" ? cat.uz : cat.ru}
+                  </h3>
+                  <p className="text-[10px] sm:text-xs opacity-70 flex items-center gap-1">
+                    <Play size={10} fill="currentColor" />
+                    {count}{" "}
+                    {lang === "uz" ? "video dars" : "видео"}
+                  </p>
+                </button>
+              );
+            })}
           </div>
-        </aside>
 
-        <main>
+          {totalVideos === 0 && (
+            <div className="mt-6 bg-white rounded-2xl p-8 text-center border border-gray-100">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-rose-50 flex items-center justify-center">
+                <Video size={28} className="text-rose-400" />
+              </div>
+              <p className="text-sm text-gray-500">
+                {lang === "uz"
+                  ? "Tez orada video darsliklar yuklanadi"
+                  : "Скоро будут загружены видеоуроки"}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* LEVEL 2: Tanlangan fan videolari */}
+      {selectedSubject && (
+        <div>
+          {/* Search */}
           <div className="bg-white rounded-2xl p-3 border border-gray-100 mb-4">
             <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
-              <Search size={16} className="text-gray-400" />
+              <Search size={16} className="text-gray-400 flex-shrink-0" />
               <input
                 type="text"
                 placeholder={
-                  lang === "uz" ? "Video qidiring..." : "Найти видео..."
+                  lang === "uz"
+                    ? "Video nomi bo'yicha qidirish..."
+                    : "Поиск по названию..."
                 }
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm"
+                className="flex-1 min-w-0 bg-transparent outline-none text-sm"
               />
             </div>
           </div>
@@ -171,28 +205,28 @@ export default function VideoDarsliklarPage() {
                 <Video size={36} className="text-rose-600" />
               </div>
               <h3 className="font-black text-xl text-gray-800 mb-2">
-                {videos.length === 0
+                {subjectVideos(selectedSubject).length === 0
                   ? lang === "uz"
-                    ? "Hozircha videolar yo'q"
+                    ? "Hozircha video yo'q"
                     : "Видео пока нет"
                   : lang === "uz"
                   ? "Topilmadi"
                   : "Не найдено"}
               </h3>
               <p className="text-gray-500 text-sm">
-                {videos.length === 0
+                {subjectVideos(selectedSubject).length === 0
                   ? lang === "uz"
-                    ? "Tez orada video darsliklar qo'shiladi"
-                    : "Скоро будут добавлены видеоуроки"
+                    ? "Bu fan uchun videolar tez orada qo'shiladi"
+                    : "Видео для этого предмета будут добавлены скоро"
                   : lang === "uz"
-                  ? "Boshqa fan yoki qidiruvni sinab ko'ring"
-                  : "Попробуйте другой предмет или запрос"}
+                  ? "Boshqa qidiruvni sinab ko'ring"
+                  : "Попробуйте другой запрос"}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {filtered.map((v) => {
-                const cat = VIDEO_CATEGORIES.find((c) => c.key === v.category);
+                const cat = findCategory(v.category);
                 return (
                   <div
                     key={v.id}
@@ -215,11 +249,6 @@ export default function VideoDarsliklarPage() {
                           fill="currentColor"
                         />
                       </div>
-                      {v.type === "youtube" && (
-                        <span className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded">
-                          YouTube
-                        </span>
-                      )}
                       {v.duration && (
                         <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1">
                           <Clock size={10} />
@@ -238,11 +267,6 @@ export default function VideoDarsliklarPage() {
                           {v.teacher ||
                             (lang === "uz" ? "O'qituvchi" : "Преподаватель")}
                         </p>
-                        {cat && (
-                          <span className="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded ml-2 flex-shrink-0">
-                            {lang === "uz" ? cat.uz : cat.ru}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -250,8 +274,8 @@ export default function VideoDarsliklarPage() {
               })}
             </div>
           )}
-        </main>
-      </div>
+        </div>
+      )}
 
       {/* Video Player Modal */}
       {playing && (
@@ -278,13 +302,7 @@ export default function VideoDarsliklarPage() {
             </div>
             <div className="aspect-video bg-black">
               {playing.type === "youtube" ? (
-                <iframe
-                  src={`https://www.youtube.com/embed/${playing.youtubeId}?autoplay=1`}
-                  title={playing.title_uz}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+                <YouTubePlayer videoId={playing.youtubeId} autoplay />
               ) : (
                 <video
                   src={playing._blobUrl}
